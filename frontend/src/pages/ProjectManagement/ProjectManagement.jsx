@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import Layout from '../../components/Layout';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import useIsMobile from '../../hooks/useIsMobile';
 import WeeklyProgressTab from './WeeklyProgressTab';
 import OverallProgressTab from './OverallProgressTab';
 import SCurveTab from './SCurveTab';
 import GroupSCurveGrid from './GroupSCurveGrid';
+import MobileForemanTab from '../Mobile/MobileForemanTab';
 import './ProjectManagement.css';
 
 const MENU_KEY = 'project_management';
@@ -27,6 +29,7 @@ function formatMoney(v) {
 
 export default function ProjectManagement() {
   const { canAccessTab } = useAuth();
+  const isMobile = useIsMobile();
   // เห็นเฉพาะ Tab ที่ system_mgr ให้สิทธิ์ไว้เท่านั้น (ถ้ายังไม่มีเลย จะไม่เห็น Tab ไหนเลย — โชว์ข้อความ
   // แจ้งแทน กันสับสนว่าหน้าเสีย)
   const TABS = ALL_TABS.filter((t) => canAccessTab(MENU_KEY, t.key));
@@ -101,10 +104,14 @@ export default function ProjectManagement() {
       )}
 
       {projectId && activeTab === 'this-week' && (
-        <WeeklyProgressTab projectId={projectId} week="this" editable />
+        isMobile
+          ? <MobileForemanTab projectId={projectId} week="this" />
+          : <WeeklyProgressTab projectId={projectId} week="this" editable />
       )}
       {projectId && activeTab === 'next-week' && (
-        <WeeklyProgressTab projectId={projectId} week="next" editable />
+        isMobile
+          ? <MobileForemanTab projectId={projectId} week="next" />
+          : <WeeklyProgressTab projectId={projectId} week="next" editable />
       )}
       {projectId && activeTab === 'overall' && (
         <OverallProgressTab

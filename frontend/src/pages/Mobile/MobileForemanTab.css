@@ -1,0 +1,187 @@
+/* src/pages/Mobile/MobileForemanTab.css */
+/* ใช้ design token เดิมของระบบทั้งหมด (var(--accent), var(--surface) ฯลฯ จาก index.css) ไม่สร้างธีมใหม่
+   เพื่อให้หน้าจอนี้ยังรู้สึกเป็นระบบเดียวกับหน้าคอมพิวเตอร์ แค่จัด layout ให้เหมาะกับมือถือ (ปุ่มใหญ่ กดง่าย) */
+
+.mforeman {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.mforeman__status {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+  padding: 24px 0;
+}
+.mforeman__status--warn { color: var(--danger); }
+
+.mforeman__card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  min-height: 64px;
+}
+.mforeman__card:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.mforeman__card:not(:disabled):active {
+  background: var(--accent-soft);
+}
+
+.mforeman__card-text { flex: 1; min-width: 0; }
+
+.mforeman__card-title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.mforeman__card-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.mforeman__card-chevron {
+  font-size: 24px;
+  color: var(--ink-soft);
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.mforeman-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.mforeman-entry__back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.mforeman-entry__title {
+  font-size: 20px;
+  margin: 0 0 2px;
+}
+
+.mforeman-entry__breadcrumb {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+}
+
+.mforeman-entry__plan {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mforeman-entry__label {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+}
+
+.mforeman-entry__slider {
+  width: 100%;
+  height: 36px;
+  accent-color: var(--accent);
+}
+
+.mforeman-entry__percent {
+  text-align: center;
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 8px 0 28px;
+}
+
+.mforeman-entry__photo-btn {
+  display: block;
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+.mforeman-entry__photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.mforeman-entry__photo-chip {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mforeman-entry__photo-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mforeman-entry__photo-uploading { font-size: 20px; }
+
+.mforeman-entry__photo-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+}
+
+.mforeman-entry__save {
+  margin-top: auto;
+  width: 100%;
+  padding: 18px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+}
+.mforeman-entry__save:disabled { opacity: 0.6; }
+.mforeman-entry__save:not(:disabled):active { background: var(--accent-hover); }
