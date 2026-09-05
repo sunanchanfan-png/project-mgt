@@ -46,7 +46,9 @@ export default function ProjectManagement() {
   }, [TABS.map((t) => t.key).join(',')]);
 
   useEffect(() => {
-    client.get('/projects').then((res) => {
+    // เมนูนี้ (การจัดการโครงการ) ให้เลือกได้เฉพาะโครงการที่ "เปิดอยู่" (status=on) เท่านั้น — ตัดโครงการ
+    // ที่ปิดแล้วออกจาก dropdown ตามที่ตกลงกันไว้
+    client.get('/projects', { params: { status: 'on' } }).then((res) => {
       setProjects(res.data.projects);
       if (res.data.projects.length > 0) setProjectId(res.data.projects[0].id);
     });

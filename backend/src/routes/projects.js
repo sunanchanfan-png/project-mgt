@@ -38,20 +38,30 @@ async function generateProjectCode() {
 /**
  * GET /api/projects
  * ดูรายการโปรเจกต์ทั้งหมด รองรับ filter ปีผ่าน query param ?year=69
+ * รองรับ filter สถานะผ่าน ?status=on ด้วย (ใช้ตัดโครงการที่ปิดแล้ว/status=closed ออกจาก dropdown เลือก
+ * โครงการของทุกเมนู ยกเว้นเมนู "เปิดโครงการ" เอง ที่ต้องเห็นครบทุกสถานะไว้เผื่อกลับมาเปิดใหม่ทีหลัง)
  */
 router.get('/', async (req, res) => {
   try {
-    const { year } = req.query;
+    const { year, status } = req.query;
     let sql = `SELECT id, project_code, name, client_name, description,
                       contract_number, contract_start, contract_end, duration_days,
                       contact_person, contact_phone, supervisor_name, supervisor_phone,
                       location, budget_total, status, created_at, updated_at
                FROM project_mgt.projects`;
     const params = [];
+    const whereClauses = [];
 
     if (year) {
-      sql += ` WHERE project_code LIKE $1`;
       params.push(`SK-${year}%`);
+      whereClauses.push(`project_code LIKE $${params.length}`);
+    }
+    if (status) {
+      params.push(status);
+      whereClauses.push(`status = $${params.length}`);
+    }
+    if (whereClauses.length > 0) {
+      sql += ` WHERE ${whereClauses.join(' AND ')}`;
     }
 
     sql += ` ORDER BY project_code DESC`;

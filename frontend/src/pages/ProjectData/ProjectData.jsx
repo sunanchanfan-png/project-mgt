@@ -100,7 +100,10 @@ export default function ProjectData() {
   const [level3EditingItem, setLevel3EditingItem] = useState(null);
 
   useEffect(() => {
-    client.get('/projects').then((res) => {
+    // เมนูนี้ (ทำ WBS/BOQ) ให้เลือกได้เฉพาะโครงการที่ "เปิดอยู่" (status=on) เท่านั้น — โครงการที่ปิดไปแล้ว
+    // ไม่ควรมาโผล่ให้เลือกทำงานต่อ (ตัดออกจาก dropdown ตามที่ตกลงกันไว้ ยกเว้นเมนู "เปิดโครงการ" เองที่
+    // ต้องเห็นครบทุกสถานะไว้เผื่อกลับมาเปิดใหม่ทีหลัง)
+    client.get('/projects', { params: { status: 'on' } }).then((res) => {
       setProjects(res.data.projects);
       if (res.data.projects.length > 0) setProjectId(res.data.projects[0].id);
     });

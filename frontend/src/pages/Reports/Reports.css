@@ -712,7 +712,7 @@
   padding-left: 22px;
 }
 
-/* ข้อ 4: ✓ ถอย 44px */
+/* ข้อ 4: bullet ธรรมดา ถอย 44px (เดิมเคยเป็นเครื่องหมาย ✓ เปลี่ยนตามที่ขอ) */
 .report-preview__list--check {
   list-style: none;
   padding-left: 44px;
@@ -723,7 +723,7 @@
   margin-left: 0;
 }
 .report-preview__list--check li::before {
-  content: '✓ ';
+  content: '• ';
   color: #1E8E4F;
   font-weight: 700;
 }
@@ -773,6 +773,24 @@
 @media screen and (max-width: 640px) {
   .report-preview { padding: 20px; }
   .report-preview__photo-grid { grid-template-columns: 1fr; }
+
+  /* ===== ขยายหน้าจอ "เล่มรายงาน" ให้เต็มที่บนมือถือ (ทางเลือกที่ 3: เก็บเส้นขอบไว้บางๆ พอให้เห็นแนวแบ่ง
+     แต่ละหน้า แต่ลด margin ซ้าย-ขวาที่กันพื้นที่ไว้เยอะเกินจำเป็นบนจอแคบลงเกือบหมด — ตารางไม่แตะเพราะ
+     ตารางตั้งใจให้ scroll แนวนอนอยู่แล้ว การลดขอบ container ไม่กระทบกับ logic การ scroll นั้น) */
+  .report-preview {
+    max-width: 100%;
+    padding: 4px;
+  }
+  .report-print-page {
+    padding: 16px 12px;
+    border-radius: 2px;
+    margin-bottom: 12px;
+  }
+  .report-print-page--cover {
+    min-height: 0;
+    padding-top: 60px;
+    padding-bottom: 60px;
+  }
 }
 
 /* ===== ปุ่มดูรูป (ตอนไม่ได้แก้ไข) + popup พรีวิว — เหมือน Menu3 เป๊ะ ===== */
