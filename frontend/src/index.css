@@ -1,0 +1,75 @@
+/* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* ===== Design Tokens: "Site Blueprint" theme ===== */
+  --bg: #EDEFF0;           /* พื้นหลังโทนกระดาษเขียนแบบ เย็นกว่าครีมทั่วไป */
+  --surface: #FFFFFF;       /* พื้นผิวการ์ด/ฟอร์ม */
+  --ink: #12202E;           /* ตัวอักษรหลัก หมึกกรมท่าเข้ม */
+  --ink-soft: #4B5D6B;      /* ตัวอักษรรอง */
+  --line: #C7CDD1;          /* เส้นแบ่ง/กรอบบางๆ */
+  --accent: #E8702A;        /* ส้มนิรภัย - ปุ่มหลัก/action */
+  --accent-hover: #D15F1C;
+  --accent-soft: #FBE4D5;   /* พื้นหลังอ่อนของ accent */
+  --steel: #2E6F6A;         /* เขียวเหล็ก - สถานะสำเร็จ/รอง */
+  --danger: #C4433A;        /* แดงอิฐ - error/ลบ */
+
+  /* Sidebar: ธีมส้ม-เทา */
+  --charcoal: #2B2F33;        /* พื้นหลัง sidebar เทาเข้ม */
+  --charcoal-soft: #383D42;   /* hover state ใน sidebar */
+  --charcoal-line: #454A4F;   /* เส้นแบ่งใน sidebar */
+  --charcoal-text: #B9BEC3;   /* ตัวอักษรรองใน sidebar */
+  --app-shell-width: 1240px;  /* ความกว้างพื้นที่แสดงผลหลัก */
+  --sidebar-width: 270px;
+  --sidebar-width-collapsed: 72px;
+
+  --font-display: 'Segoe UI', 'Sarabun', sans-serif;
+  --font-body: 'Segoe UI', 'Sarabun', sans-serif;
+  --font-mono: 'Segoe UI', 'Sarabun', sans-serif;
+
+  --radius: 4px;
+  --shadow-card: 0 1px 3px rgba(18, 32, 46, 0.08), 0 1px 2px rgba(18, 32, 46, 0.06);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  /* ลายกระดาษกริดบางๆ แบบเขียนแบบวิศวกรรม */
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.mono { font-family: var(--font-mono); }
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+a { color: inherit; }
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

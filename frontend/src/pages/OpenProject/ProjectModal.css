@@ -1,0 +1,123 @@
+/* src/components/ProjectModal.css */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 32, 46, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--surface);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+  box-shadow: 0 8px 24px rgba(18, 32, 46, 0.25);
+}
+
+.modal-box__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.modal-box__header h2 { font-size: 19px; }
+
+.modal-box__close {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: var(--ink-soft);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+}
+.modal-box__close:hover { background: var(--bg); color: var(--ink); }
+
+.modal-box__error {
+  background: #FBEAE8;
+  color: var(--danger);
+  border: 1px solid #EFC3BE;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.form-row {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+.form-row--2 { grid-template-columns: 1fr 1fr; }
+.form-row--3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-row--4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+@media (max-width: 560px) {
+  .form-row--2, .form-row--3, .form-row--4 { grid-template-columns: 1fr; }
+}
+
+.modal-box .field { margin-bottom: 12px; }
+
+.modal-box .field__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+.modal-box input,
+.modal-box select,
+.modal-box textarea {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.modal-box textarea { resize: vertical; }
+
+.modal-box input:focus,
+.modal-box select:focus,
+.modal-box textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.modal-box__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.btn-secondary:hover { border-color: var(--ink); }
+
+.modal-box .btn-primary {
+  padding: 10px 24px;
+  border-radius: 8px;
+}

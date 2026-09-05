@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Environment variables — มีความลับจริง (DATABASE_URL, JWT_SECRET) ห้าม commit เด็ดขาด
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Build output (เผื่ออนาคตมี build step)
+dist/
+build/
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.swp

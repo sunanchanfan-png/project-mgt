@@ -1,0 +1,217 @@
+/* src/pages/ProjectData/ProjectData.css */
+
+.pdata-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ห่อ filter หลายตัวไว้ด้วยกัน ให้ชิดกันเป็นกลุ่มเดียว แทนที่จะถูก justify-content:space-between
+   ของ .pdata-toolbar ดันให้กระจายห่างกันไปทั่วทั้งแถบ (เช่น filter กลุ่มงาน + รายการงาน ใน Tab กิจกรรมงาน) */
+.pdata-toolbar__filters-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.pdata-toolbar__filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.pdata-toolbar__filter select {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--ink);
+  max-width: 320px;
+}
+
+.pdata-toolbar__budget {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.pdata-toolbar__budget .mono { font-weight: 600; color: var(--ink); }
+
+/* ===== Tabs — แสดงเป็นกล่องสี ===== */
+.pdata-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: none;
+  margin-bottom: 10px;
+}
+
+.pdata-tab {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.pdata-tab:hover { border-color: var(--accent); color: var(--ink); }
+.pdata-tab--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.pdata-placeholder {
+  padding: 40px;
+  text-align: center;
+  color: var(--ink-soft);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+.pdata-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.dash__error { color: var(--danger); }
+
+/* ===== ตาราง (ยึด format มาตรฐาน: H กระชับ, header กลางตัวหนา 11px,
+   ข้อมูลจัดกลางยกเว้นคอลัมน์ชื่อ, เส้น grid ครบทุกช่อง) ===== */
+.table-scroll { overflow-x: auto; }
+
+.group-table {
+  width: 100%;
+  min-width: 700px;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.group-table th {
+  background: var(--bg);
+  text-align: center;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.group-table td {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 400;
+  text-align: center;
+  cursor: pointer;
+}
+
+.group-table td:nth-child(2) { text-align: left; } /* ชื่อกลุ่ม ชิดซ้าย */
+
+.group-table tbody tr { cursor: pointer; }
+.group-table tbody tr:hover { background: var(--bg); }
+
+.group-table tfoot td {
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  font-weight: 700;
+  text-align: center;
+  background: var(--bg);
+  cursor: default;
+}
+
+.group-table__empty {
+  text-align: center;
+  color: var(--ink-soft);
+  padding: 32px !important;
+  white-space: normal !important;
+  cursor: default !important;
+}
+
+.group-table__actions { cursor: default; }
+.group-table__actions-inner {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  padding: 0;
+  font-weight: 500;
+}
+.link-btn:hover { text-decoration: underline; }
+.link-btn--danger { color: var(--danger); }
+
+.final-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  vertical-align: middle;
+}
+
+.btn-primary--sm {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 11px;
+}
+
+.pdata-status {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pdata-status--ok { color: var(--steel); }
+.pdata-status--warn { color: var(--danger); }
+
+/* ===== มุมมอง "ทั้งหมด" - แต่ละกลุ่มเป็น block แยกกัน ===== */
+.pdata-group-block {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 2px solid var(--line);
+}
+.pdata-group-block:first-of-type { margin-top: 16px; }
+
+.pdata-group-block__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pdata-group-block__badge {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.pdata-group-block__badge--ok { background: #E1F5E7; color: #1E8E4F; }
+.pdata-group-block__badge--warn { background: #FBEAE8; color: var(--danger); }

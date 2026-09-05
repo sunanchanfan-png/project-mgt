@@ -1,0 +1,32 @@
+/* src/pages/ProjectData/PrintPreviewModal.css */
+
+.print-modal { max-width: 380px; }
+
+.print-modal__section { margin-bottom: 14px; }
+.print-modal__section .field__label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.print-modal__options {
+  display: flex;
+  gap: 8px;
+}
+
+.print-modal__opt {
+  flex: 1;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+.print-modal__opt:hover { border-color: var(--accent); color: var(--accent); }
+
+.print-modal__opt--active {
+  border-color: var(--accent);
+  background: var(--accent-soft, rgba(232, 112, 42, 0.12));
+  color: var(--accent);
+}

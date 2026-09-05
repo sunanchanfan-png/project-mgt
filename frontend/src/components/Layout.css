@@ -1,0 +1,117 @@
+/* src/components/Layout.css */
+
+.app-shell {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  background: var(--bg);
+}
+
+/* Sidebar กลับมาเป็น push layout (ไม่ใช่ overlay แล้ว) จึงกินพื้นที่ปกติ
+   ใน flex row - viewport จะหดขยายอัตโนมัติตามที่ sidebar เหลือให้
+   height:100vh + overflow:hidden ที่ .app-shell ด้านบน ทำให้ sidebar
+   คงที่ไม่เลื่อนตามหน้า มีแค่ .app-shell__content ด้านล่างที่เลื่อนได้เอง */
+.app-shell__viewport {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell__topbar {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* ปุ่มเปิด sidebar - ไอคอนเดียวเล็กๆ ไม่มีข้อความ แสดงเฉพาะตอน sidebar
+   ปิดอยู่ (เพราะปิด = หายไป 0px ไม่มีปุ่มให้กดข้างในแล้ว) */
+.app-shell__menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  background: var(--steel);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+}
+.app-shell__menu-btn:hover { background: #245B57; }
+.app-shell__menu-btn--hidden { display: none; }
+
+.app-shell__title { font-size: 20px; flex: 1; min-width: 0; }
+
+.app-shell__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.app-shell__user-name { font-size: 14px; font-weight: 500; }
+
+.app-shell__user-role {
+  font-size: 11px;
+  color: var(--ink-soft);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.app-shell__content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@media screen and (max-width: 900px) {
+  .app-shell__viewport { padding: 6px; }
+  .app-shell__topbar { padding: 10px; margin-bottom: 6px; }
+  .app-shell__content { padding: 8px; }
+  .app-shell__title { font-size: 16px; }
+  .app-shell__user-name { display: none; }
+
+  /* ===== โหมด "เลื่อนได้ทั้งจอเหมือน PC" เฉพาะตอนอยู่ Tab Gantt บนจอมือถือแคบ =====
+     คอลัมน์แช่แข็ง (สร้างข้อมูลโครงการ > Gantt) กว้างรวม 530px ซึ่งกว้างกว่าจอมือถือทั่วไปเองอยู่แล้ว
+     ทำให้เลื่อนในกรอบเดิมแล้วยังไม่เห็นแท่งงานเลย จึงปลด overflow:hidden/height:100vh ของทั้ง app-shell
+     ชั่วคราว ให้กลับไปเป็นหน้าเว็บปกติที่ขยายสูงตามเนื้อหาแล้วเลื่อนทั้งจอได้ตามธรรมชาติแทน
+     (GanttView.jsx เป็นคนเติม/ถอด class พวกนี้ตอน mount/unmount ของ Tab นั้นๆ) */
+  html.gantt-mobile-scroll,
+  body.gantt-mobile-scroll {
+    height: auto;
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+  .app-shell--gantt-mobile-scroll {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+  .app-shell--gantt-mobile-scroll .app-shell__viewport {
+    height: auto;
+    overflow: visible;
+  }
+  .app-shell--gantt-mobile-scroll .app-shell__content {
+    overflow: visible;
+  }
+}

@@ -1,0 +1,129 @@
+/* src/pages/Dashboard.css */
+
+.dash__error { color: var(--danger); }
+
+/* ===== Toolbar: filter ปี + ปุ่มเพิ่มโครงการ ===== */
+.proj-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.proj-toolbar__filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.proj-toolbar__filter select {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.btn-primary--sm {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 11px;
+}
+
+/* ===== ตารางโครงการ =====
+   สำคัญ: table ใช้ width:100% + colgroup %w เพื่อกระจายสัดส่วนตามจอ (fluid)
+   แต่มี min-width คงที่เป็นพื้น เพื่อไม่ให้คอลัมน์หดตอนจอแคบ (มือถือ) -
+   จะ scroll แนวนอนแทนการบีบคอลัมน์ */
+.table-scroll {
+  overflow-x: auto;
+}
+
+.proj-table {
+  width: 100%;
+  min-width: 1220px;   /* ผลรวม px ตามสเปค - ป้องกันคอลัมน์หดบนจอแคบ */
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.proj-table th {
+  background: var(--bg);
+  text-align: center;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.proj-table td {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 400;   /* ตัวธรรมดา ไม่ตัวหนา ทุกช่องในแถวข้อมูล */
+  text-align: center; /* ค่าเริ่มต้น: จัดกลางทุกคอลัมน์ */
+}
+
+/* คอลัมน์ 2 (ชื่อโครงการ) และ 3 (ชื่อผู้ว่าจ้าง) ให้ชิดซ้ายตามเดิม */
+.proj-table td:nth-child(2),
+.proj-table td:nth-child(3) {
+  text-align: left;
+}
+
+.proj-table tbody tr { cursor: pointer; } /* คลิกแถวเพื่อแก้ไขได้ */
+
+.proj-table td * {
+  font-weight: 400;   /* บังคับทับ element ลูกที่อาจกำหนดตัวหนาไว้ (badge/ปุ่ม) */
+}
+
+.proj-table tbody tr:hover { background: var(--bg); }
+
+.proj-table__empty {
+  text-align: center;
+  color: var(--ink-soft);
+  padding: 32px !important;
+  white-space: normal !important;
+}
+
+.proj-table__actions {
+  cursor: default; /* คอลัมน์การจัดการไม่ต้องมี cursor pointer เพราะมีปุ่มของตัวเองอยู่แล้ว */
+}
+
+.proj-table__actions-inner {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  padding: 0;
+  font-weight: 500;
+}
+.link-btn:hover { text-decoration: underline; }
+.link-btn--danger { color: var(--danger); }
+
+.status-pill {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.status-pill--on { background: #E1F5E7; color: #1E8E4F; }
+.status-pill--closed { background: #E4E6E8; color: #5C6570; }

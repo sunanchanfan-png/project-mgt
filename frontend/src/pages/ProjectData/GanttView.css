@@ -1,0 +1,582 @@
+/* src/pages/ProjectData/GanttView.css */
+
+.gantt__scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ===== แช่แข็งคอลัมน์ 1-5 (โครงสร้างงาน/%W/วัน/เริ่ม/เสร็จ) ให้อยู่นิ่งเสมอตอนเลื่อนแนวนอน
+   ให้เห็นชัดว่าแท่ง Gantt ที่กำลังดูอยู่เป็นของ WBS รายการไหน — เลื่อนเฉพาะโซนแท่ง Gantt (คอลัมน์ที่ 6) เท่านั้น
+   ใช้ nth-child อิงตำแหน่ง DOM child ตรงๆ เพราะ header/แถว L1/L2/L3 ทุกแบบมีโครงสร้าง 6 child เรียงลำดับเดียวกันเป๊ะ:
+   1=label 2=%W 3=วัน 4=เริ่ม 5=เสร็จ 6=timeline/track (ดู ActivityDateCells ที่ render เป็น fragment 3 child แทรกตำแหน่ง 3-5)
+   หมายเหตุ: ใช้ box-shadow แทน border-right ตรงๆ เพราะ border บน position:sticky มีบั๊กหายได้เวลาความกว้าง
+   หน้าเปลี่ยน (เช่น เปิด/ปิด sidebar) ในบางเบราว์เซอร์ — box-shadow ไม่มีปัญหานี้ */
+.gantt__header > :nth-child(-n+5),
+.gantt__row > :nth-child(-n+5) {
+  position: sticky;
+  background: var(--surface);
+  box-shadow: inset -1px 0 0 var(--line);
+}
+.gantt__header > :nth-child(1), .gantt__row > :nth-child(1) { left: 0; }
+.gantt__header > :nth-child(2), .gantt__row > :nth-child(2) { left: 240px; }
+.gantt__header > :nth-child(3), .gantt__row > :nth-child(3) { left: 300px; }
+.gantt__header > :nth-child(4), .gantt__row > :nth-child(4) { left: 350px; }
+.gantt__header > :nth-child(5), .gantt__row > :nth-child(5) {
+  left: 440px;
+  /* รวม divider เส้นบาง (แทน border-right) + เงาบางๆ บอกขอบเขตโซนแช่แข็ง ไว้ใน box-shadow เดียวกัน
+     (ถ้าแยกประกาศคนละ rule จะทับกันเหลือแค่อันหลังสุด ไม่ใช่รวมกัน) */
+  box-shadow: inset -1px 0 0 var(--line), 3px 0 6px -3px rgba(18, 32, 46, 0.18);
+}
+.gantt__header > :nth-child(-n+5) { z-index: 4; }
+.gantt__row > :nth-child(-n+5) { z-index: 2; }
+/* แถว L1 ใช้พื้นหลังสีเข้มกว่าเดิม (var(--bg)) อยู่แล้ว ให้คอลัมน์แช่แข็งของแถวนี้เข้าชุดกันทั้งหมด */
+.gantt__row--l1 > :nth-child(-n+5) { background: var(--bg); }
+
+/* แถบเลื่อนแนวนอนสำรอง ลอยติดขอบล่างของพื้นที่มองเห็นเสมอ (sync กับตารางจริง)
+   แก้ปัญหา scrollbar ของตารางจริงอยู่ไกลเกินไปเวลามีแถวเยอะ */
+.gantt__bottom-scrollbar {
+  position: sticky;
+  bottom: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 14px;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  z-index: 4;
+}
+
+.gantt__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.gantt__contract-note {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.gantt__zoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* กลุ่มปุ่มขวา: ซูม/เส้นเชื่อมโยง เรียงติดกับปุ่มแก้ไขข้อมูล ชิดขอบขวาของแถบเครื่องมือ */
+.gantt__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* ===== ปุ่มแก้ไข / บันทึก / ยกเลิก (โหมดดูอย่างเดียว vs โหมดแก้ไข) ===== */
+.gantt__edit-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gantt__edit-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.gantt__edit-btn {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.gantt__edit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.gantt__edit-btn--edit {
+  background: var(--bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.gantt__edit-btn--edit:hover { background: rgba(232, 112, 42, 0.08); }
+
+.gantt__edit-btn--save {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.gantt__edit-btn--save:hover:not(:disabled) { background: var(--accent-hover); }
+
+.gantt__edit-btn--cancel {
+  background: var(--bg);
+  color: var(--ink-soft);
+}
+.gantt__edit-btn--cancel:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+.gantt__print-btn {
+  background: var(--surface);
+  color: var(--steel);
+  border-color: var(--steel);
+}
+.gantt__print-btn:hover { background: rgba(46, 111, 106, 0.08); }
+
+.gantt__zoom-btn {
+  padding: 5px 12px;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+}
+.gantt__zoom-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.gantt__zoom-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.gantt__zoom-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  min-width: 60px;
+  text-align: center;
+}
+
+.gantt__grid {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  position: relative; /* จุดอ้างอิงตำแหน่งของ SVG เส้นเชื่อมโยง (.gantt__connectors) ที่ลอยทับอยู่ */
+}
+
+/* เส้นเชื่อมโยง (dependency lines) — ลอยทับเนื้อหาของกริด อยู่ในโซนเลื่อนเดียวกัน (เลื่อนพร้อมแท่ง Gantt)
+   pointer-events: none กันไม่ให้บังการคลิก/ลากแถบ Gantt หรือช่องกรอกด้านล่าง */
+.gantt__connectors {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+
+.gantt__connector-path {
+  fill: none;
+  stroke: var(--steel);
+  stroke-width: 1.5;
+}
+.gantt__connector-path--pending {
+  stroke-dasharray: 4 3;
+  stroke: var(--accent);
+}
+
+.gantt__connector-arrowhead { fill: var(--steel); }
+.gantt__connector-arrowhead--pending { fill: var(--accent); }
+
+.gantt__zoom-btn--active {
+  border-color: var(--steel);
+  color: var(--steel);
+  background: rgba(46, 111, 106, 0.08);
+}
+
+.gantt__header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg);
+  border-radius: 6px 6px 0 0;
+}
+/* กรอบตาราง เอาไว้แค่รอบแถวหัวตาราง (โครงสร้างงาน + วันที่ Gantt) เท่านั้น ไม่ครอบทั้งวิดเจ็ต
+   ใช้ pseudo-element ทับไว้ข้างบนสุด (z-index สูงกว่าคอลัมน์แช่แข็งทุกตัว) แทนการใส่ box-shadow
+   ตรงๆ ที่ .gantt__header เพราะพื้นหลังทึบของคอลัมน์แช่แข็ง (sticky) จะบังทับเส้นขอบซ้ายจนหายไป */
+.gantt__header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 1px var(--line);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.gantt__header-label {
+  width: 240px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-weight: 700;
+}
+
+.gantt__header-cell {
+  flex-shrink: 0;
+  padding: 8px 4px;
+  font-weight: 700;
+  text-align: center;
+}
+.gantt__header-cell--weight { width: 60px; }
+.gantt__header-cell--days { width: 50px; }
+.gantt__header-cell--date { width: 90px; }
+
+.gantt__header-weeks {
+  flex-shrink: 0;
+  display: flex;
+  position: relative;
+}
+
+.gantt__week {
+  flex-shrink: 0;
+  padding: 8px 2px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.gantt__contract-line {
+  position: absolute;
+  top: 0;
+  bottom: -3000px;
+  width: 0;
+  border-left: 2px dashed var(--danger);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.gantt__row {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.gantt__label {
+  width: 240px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gantt__row--l1 .gantt__label { font-weight: 700; background: var(--bg); }
+.gantt__row--l2 .gantt__label { padding-left: 24px; font-weight: 600; }
+.gantt__row--l3 .gantt__label { padding-left: 40px; color: var(--ink-soft); }
+
+.gantt__label--clickable {
+  cursor: pointer;
+  justify-content: space-between;
+}
+.gantt__label--clickable:hover { background: rgba(232, 112, 42, 0.08); }
+
+.gantt__add-hint {
+  font-size: 9px;
+  color: var(--accent);
+  opacity: 0;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+.gantt__label--clickable:hover .gantt__add-hint { opacity: 1; }
+
+.gantt__label--incomplete {
+  color: var(--danger) !important;
+}
+.gantt__label--incomplete .mono { color: var(--danger); }
+
+.gantt__unweighted-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #FBEAE8;
+  color: var(--danger);
+  white-space: nowrap;
+}
+
+.gantt__link-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(232, 112, 42, 0.12);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* ===== คอลัมน์ %W / วัน / เริ่ม / เสร็จ ===== */
+.gantt__cell {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+.gantt__cell--weight { width: 60px; font-weight: 600; }
+/* เน้น %weight ของกลุ่มงานหลัก (JG-xxx) ให้เด่นชัดกว่าระดับอื่น */
+.gantt__cell--weight-emphasis { font-weight: 800; color: var(--ink); }
+.gantt__cell--days { width: 50px; }
+.gantt__cell--date { width: 90px; }
+
+.gantt__cell-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 10px;
+  text-align: center;
+  font-family: var(--font-body);
+  color: var(--ink);
+  padding: 2px;
+}
+.gantt__cell-input:focus { outline: 1px solid var(--accent); background: var(--surface); }
+.gantt__cell-input:disabled {
+  color: var(--ink-soft);
+  cursor: default;
+  opacity: 0.75;
+}
+
+/* ทำไอคอนปฏิทินให้จางลงมาก (แทบมองไม่เห็น) แต่ไม่ขยายพื้นที่คลิก
+   เพื่อไม่ให้บังการคลิกพิมพ์วันที่ตรงๆ ในช่อง (ถ้าซ่อนสนิทแล้วขยายเต็มช่อง
+   จะบล็อกการพิมพ์เลขวันที่ตรงๆ ไม่ได้) */
+.gantt__cell-input--invalid {
+  background: #FBEAE8;
+  color: var(--danger);
+}
+
+.gantt__track {
+  position: relative;
+  flex-shrink: 0;
+  min-height: 28px;
+  background-image: repeating-linear-gradient(
+    to right, transparent, transparent 59px, var(--line) 59px, var(--line) 60px
+  );
+}
+
+.gantt__bar {
+  position: absolute;
+  top: 5px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+.gantt__bar--l1 { background: var(--ink-soft); opacity: 0.5; }
+.gantt__bar--l2 { background: var(--steel); opacity: 0.7; }
+.gantt__bar--l3 { background: var(--accent); }
+
+.gantt__bar--incomplete {
+  background: var(--danger) !important;
+  opacity: 0.85 !important;
+}
+
+.gantt__track--editable {
+  cursor: crosshair;
+  user-select: none;
+  width: 100%;
+  height: 100%;
+}
+.gantt__track--editable:hover { background-color: rgba(232, 112, 42, 0.06); }
+
+/* โหมดดูอย่างเดียว: ปิดการลากทั้งหมด ไม่ให้มือไปโดนแล้วข้อมูลเปลี่ยน */
+.gantt__track--readonly {
+  cursor: default;
+  user-select: none;
+  width: 100%;
+  height: 100%;
+}
+
+.gantt__row--dirty { background: rgba(232, 112, 42, 0.05); }
+
+.gantt__label--locked { cursor: default; }
+
+.gantt__unsaved-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(232, 112, 42, 0.15);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.gantt__bar--dragging {
+  background: var(--accent-hover);
+  border: 1px dashed #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: visible;
+  z-index: 5;
+  padding: 0 4px;
+}
+
+.gantt__note {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.gantt__note--mobile-hint { display: none; }
+@media screen and (max-width: 900px) {
+  .gantt__note--mobile-hint { display: block; }
+}
+
+/* ===== พิมพ์ (Print) =====
+   ตอนพิมพ์ ซ่อน chrome ของแอปทั้งหมด และซ่อนตัว Gantt แบบ interactive (div+flex) ไปเลย
+   แสดง .gantt-print-table (ตาราง <table> จริง ซ่อนไว้ปกติ) แทน — ใช้ <table><thead> ของจริง
+   เพราะ "ซ้ำหัวตารางทุกหน้าพิมพ์" เป็นฟีเจอร์มาตรฐานของ HTML table ที่ทุกเบราว์เซอร์รองรับเสถียร
+   (ลองใช้ CSS display:table บน div มาก่อนแล้วเจอบั๊กเพี้ยนในหลายเบราว์เซอร์ เลยเปลี่ยนมาใช้ table จริงแทน) */
+@media print {
+  .sidebar,
+  .app-shell__topbar,
+  .pdata-toolbar,
+  .pdata-tabs,
+  .gantt__toolbar,
+  .gantt__note,
+  .gantt__scroll,
+  .gantt__bottom-scrollbar {
+    display: none !important;
+  }
+  .app-shell,
+  .app-shell__viewport,
+  .app-shell__content {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  /* หัวกระดาษพิมพ์ — โชว์เฉพาะตอนพิมพ์เท่านั้น (ปกติซ่อนไว้บนหน้าจอ) */
+  .gantt__print-title {
+    display: block !important;
+  }
+
+  .gantt-print-table {
+    display: table !important;
+  }
+
+  /* บังคับให้พิมพ์สีพื้นหลัง (แท่ง Gantt) ด้วย — ปกติเบราว์เซอร์จะไม่พิมพ์ background-color ให้
+     โดยดีฟอลต์ (ประหยัดหมึก) เว้นแต่ผู้ใช้ไปติ๊กเปิด "Background graphics" เองในหน้าต่างพิมพ์
+     บังคับผ่าน CSS ตรงนี้แทน ไม่ต้องพึ่งผู้ใช้ไปตั้งค่าเอง แท่งงานถึงจะขึ้นสีจริงตอนพิมพ์ */
+  .gantt,
+  .gantt * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* บังคับตัวอักษรทั้งหมดในตารางเป็นสีดำล้วนตอนพิมพ์ (ไม่เอาสีเทา/ส้ม/เขียวของหน้าจอ)
+     ไม่กระทบสีพื้นหลังของแท่งงาน (background-color) เพราะเป็นคนละ property */
+  .gantt,
+  .gantt * {
+    color: #000 !important;
+  }
+}
+
+/* ===== ตารางพิมพ์ (<table> จริง) — ซ่อนไว้ปกติ โชว์เฉพาะตอนพิมพ์เท่านั้น (ดู @media print ด้านบน) =====
+   ใช้ <thead> ของจริงเพื่อให้ซ้ำหัวตารางทุกหน้าพิมพ์ได้เสถียรในทุกเบราว์เซอร์ (แทนการเลียนแบบด้วย CSS) */
+.gantt-print-table {
+  display: none;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+.gantt-print-table th,
+.gantt-print-table td {
+  border: 1px solid var(--line);
+  padding: 3px 6px;
+  text-align: center;
+  font-weight: normal;
+}
+.gantt-print-table thead {
+  display: table-header-group; /* มาตรฐาน HTML: บอกเบราว์เซอร์ชัดๆ ว่าให้ซ้ำส่วนนี้ทุกหน้า */
+}
+.gantt-print-table thead th {
+  background: var(--bg);
+  font-weight: 700;
+}
+.gantt-print-table tbody tr {
+  page-break-inside: avoid; /* กันแถวขาดครึ่งคาบรอยต่อหน้ากระดาษ */
+}
+.gantt-print-table .gantt-print-table__label-col {
+  text-align: left;
+  width: 240px;
+  white-space: nowrap;
+}
+.gantt-print-table__row--l1 td {
+  font-weight: 700;
+  background: var(--bg);
+}
+.gantt-print-table__row--l1 .gantt-print-table__weight { font-weight: 800; }
+.gantt-print-table__row--l2 td { font-weight: 600; }
+.gantt-print-table__row--l3 td { color: var(--ink-soft); }
+.gantt-print-table__row--l3 .gantt-print-table__label-col { padding-left: 20px; }
+.gantt-print-table__row--l2 .gantt-print-table__label-col { padding-left: 10px; }
+
+.gantt-print-table__timeline-header {
+  display: flex;
+}
+.gantt-print-table__timeline-header-cell {
+  flex-shrink: 0;
+  text-align: center;
+  font-weight: 700;
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.gantt-print-table__timeline-cell {
+  display: flex;
+  align-items: center;
+  min-height: 14px;
+}
+.gantt-print-table__timeline-spacer {
+  flex-shrink: 0;
+}
+.gantt-print-bar {
+  flex-shrink: 0;
+  height: 10px;
+  border-radius: 3px;
+}
+.gantt-print-bar--l1 { background: #B9C2C8; }
+.gantt-print-bar--l2 { background: var(--steel); }
+.gantt-print-bar--l3 { background: var(--accent); }
+
+.gantt__print-title {
+  display: none; /* โชว์เฉพาะตอนพิมพ์ผ่าน @media print ด้านบน */
+  margin-bottom: 8px;
+}
+.gantt__print-title h2 {
+  font-size: 16px;
+  margin: 0 0 2px 0;
+}
+.gantt__print-title p {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ===== จอมือถือแนวตั้งแคบ =====
+   คอลัมน์แช่แข็ง 1-5 กว้างรวม 530px ซึ่งกว้างกว่าจอมือถือส่วนใหญ่เองอยู่แล้ว ถ้ายังคงแช่แข็งไว้
+   ต่อให้เลื่อนเท่าไหร่ก็จะไม่มีทางเห็นแท่ง Gantt เลย (เพราะคอลัมน์แช่แข็งไม่เลื่อนหนีไปไหนตามธรรมชาติของ sticky)
+   บนจอแคบเลยปิดการแช่แข็งแนวนอนไปเลย ให้ทุกคอลัมน์เลื่อนไปพร้อมกันเป็นตารางกว้างธรรมดาแทน
+   (ปาดนิ้วเลื่อนตารางไปเรื่อยๆ ก็จะไปถึงแท่ง Gantt ได้แน่นอน ไม่ต้องพึ่งการซูมออก)
+   ส่วนหัวตาราง (.gantt__header) ยังคง sticky แนวตั้งไว้เหมือนเดิม (ยังมีประโยชน์ตอนเลื่อนดูรายการยาวๆ)
+   จำกัดเฉพาะ @media screen เท่านั้น (ไม่ใช่ print) เพราะหน้ากระดาษ A4/A3 บางแนวคำนวณความกว้างเป็น px
+   ได้น้อยกว่า 900px เหมือนกัน ถ้าไม่ระบุ screen ไว้ อาจดันไปโดน media query นี้ตอนพิมพ์โดยไม่ตั้งใจ */
+@media screen and (max-width: 900px) {
+  .gantt__header > :nth-child(-n+5),
+  .gantt__row > :nth-child(-n+5) {
+    position: static;
+  }
+  .gantt__header > :nth-child(5),
+  .gantt__row > :nth-child(5) {
+    /* ตัด divider shadow ของโซนแช่แข็งออก เพราะไม่มีโซนแช่แข็งให้แบ่งเขตแล้วบนจอแคบ */
+    box-shadow: inset -1px 0 0 var(--line);
+  }
+}

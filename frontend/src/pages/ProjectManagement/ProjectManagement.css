@@ -1,0 +1,508 @@
+/* src/pages/ProjectManagement/ProjectManagement.css
+   หมายเหตุ: คัดลอกคลาสพื้นฐาน (toolbar/tabs/status/ปุ่ม) มาจาก ProjectData.css ให้เหมือนกันเป๊ะ
+   ตามธรรมเนียมเดิมของโปรเจกต์นี้ (แต่ละหน้ามีสำเนา CSS ของตัวเอง ไม่พึ่งพาการ bundle ข้ามหน้า) */
+
+.pdata-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pdata-toolbar__filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.pdata-toolbar__filter select {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--ink);
+  max-width: 320px;
+}
+
+.pdata-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.pdata-tab {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.pdata-tab:hover { border-color: var(--accent); color: var(--ink); }
+.pdata-tab--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.pdata-status {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pdata-status--ok { color: var(--steel); }
+.pdata-status--warn { color: var(--danger); }
+
+.btn-primary {
+  padding: 8px 18px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary--sm {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 11px;
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.btn-secondary:hover { border-color: var(--ink); }
+.btn-secondary--sm {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+.progress-table__action-group {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* ปุ่ม "แก้ไข/บันทึก/ยกเลิก/ลบ" ในช่อง "การจัดการ" — เป็นลิงก์ข้อความขีดเส้นใต้ตลอดเวลา (ไม่ใช่ปุ่มกล่อง)
+   ตามแบบเดียวกับปุ่ม "แก้ไข ลบ" ที่ใช้อยู่แล้วในหน้าอื่นของแอป (ProjectData.css .link-btn) */
+.progress-table__link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.progress-table__link-btn:hover { color: var(--accent-hover); }
+.progress-table__link-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.progress-table__link-btn--danger { color: var(--danger); }
+.progress-table__link-btn--danger:hover { color: #a8352d; }
+
+.progress-table__hint {
+  font-size: 10px;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+/* ===== ตารางความคืบหน้า (ใช้ร่วมกันทั้ง Tab งานสัปดาห์นี้/หน้า และตารางงานรวม) ===== */
+.progress-table-wrap { margin-top: 4px; }
+
+.progress-table__week-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+.progress-table__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.progress-table__toolbar .progress-table__week-label { margin-bottom: 0; }
+
+/* ให้เลื่อนดูตารางแนวนอนได้บนมือถือ (แทนการห่อ/บีบตัวอักษรจนอ่านไม่ออก) — ตารางจะคงความกว้าง
+   ขั้นต่ำไว้เสมอ (min-width บน .progress-table) แล้วให้กล่องนี้เป็นตัวจัดการ scroll แทน */
+.progress-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.progress-table {
+  width: 100%;
+  min-width: 760px; /* กันคอลัมน์บีบจนตัวเลข/ข้อความห่อบรรทัดบนจอแคบ ให้ scroll แนวนอนแทน */
+  border-collapse: collapse;
+  font-size: 11px;
+  table-layout: fixed;
+}
+
+.progress-table th,
+.progress-table td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: center;
+  white-space: nowrap; /* ห้ามห่อข้อความในทุกช่อง ไม่ใช่แค่คอลัมน์ชื่อ — ให้ scroll แทนบีบ/ห่อ */
+}
+
+.progress-table thead th {
+  background: var(--bg);
+  font-weight: 700;
+  color: var(--ink-soft);
+  position: sticky;
+  top: 0;
+}
+
+.progress-table td.progress-table__label-col {
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* หัวตาราง (header) ของคอลัมน์ "โครงสร้างงาน" ให้จัดกึ่งกลาง — ต่างจากแถวข้อมูลด้านล่างที่ชิดซ้าย
+   (คนละ requirement กัน: อ่านหัวคอลัมน์ง่ายตรงกลาง แต่ข้อมูลจริงต้องเห็นลำดับขั้นการเยื้องชัดเจน) */
+.progress-table th.progress-table__label-col {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.progress-table__row--l1 td { font-weight: 700; background: var(--bg); }
+.progress-table__row--l2 td { font-weight: 600; }
+.progress-table__row--l3 td { color: var(--ink-soft); }
+.progress-table__row--l2 .progress-table__label-col { padding-left: 24px; }
+.progress-table__row--l3 .progress-table__label-col { padding-left: 40px; }
+
+.progress-table__input {
+  width: 70px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-align: center;
+}
+/* เอาลูกศรขึ้น-ลง (spinner) ของ input type=number ออก ตามที่ขอ */
+.progress-table__input::-webkit-outer-spin-button,
+.progress-table__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.progress-table__input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.progress-table__photo-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.progress-table__photo-btn {
+  cursor: pointer;
+  padding: 3px 8px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.progress-table__photo-btn:hover { border-color: var(--accent); }
+
+.progress-table__photo-chip {
+  font-size: 9px;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  padding: 2px 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.progress-table__photo-chip button {
+  background: none;
+  border: none;
+  font-size: 9px;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.progress-table__photo-count {
+  font-size: 9px;
+  color: var(--ink-soft);
+}
+
+.progress-table__photo-thumb {
+  width: 22px;
+  height: 22px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+
+.progress-table__photo-uploading {
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.progress-table__photo-view-btn {
+  background: var(--accent-soft);
+  border: none;
+  border-radius: 999px;
+  color: var(--accent-hover);
+  font-size: 9px;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.progress-table__photo-view-btn:hover { background: var(--accent); color: #fff; }
+
+.view-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.view-photos-grid__img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.progress-status--ahead { color: #1E8E4F; font-weight: 700; }
+.progress-status--behind { color: var(--danger); font-weight: 700; }
+.progress-status--ontrack { color: var(--ink); font-weight: 600; }
+
+/* ===== S-Curve chart (SVG มือเขียนเอง) ===== */
+.scurve-chart {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 16px; /* ลดจาก 16px รอบด้าน เหลือ 10px บน-ล่าง (ซ้าย-ขวายังคงเดิม) ตัดช่องว่างส่วนเกิน */
+  max-width: 100%;
+  overflow: hidden; /* กันเผื่อกรณีเนื้อหาข้างในกว้างเกิน ไม่ให้ดันหน้าล้นแนวนอน */
+  box-sizing: border-box;
+}
+
+/* การ์ดย่อในกริด "Group S-Curve" (ทุกกลุ่มงานพร้อมกัน 2 คอลัมน์) — เล็กลง กระชับขึ้น สำหรับกวาดตาดูภาพรวม */
+.scurve-chart--compact {
+  padding: 8px 10px;
+}
+.scurve-chart--compact .scurve-chart__title {
+  font-size: 11px;
+}
+.scurve-chart--compact .scurve-chart__header {
+  margin-bottom: 4px;
+}
+
+.scurve-chart--clickable {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.scurve-chart--clickable:hover,
+.scurve-chart--clickable:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  outline: none;
+}
+
+.scurve-chart__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px; /* ลดจาก 10px */
+}
+
+.scurve-chart__title {
+  font-size: 13px;
+  margin-bottom: 0;
+  color: var(--ink);
+  overflow-wrap: break-word; /* ชื่อโครงการยาวๆ ให้ตัดคำห่อบรรทัดแทนล้นกรอบ */
+}
+
+.scurve-chart__svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  /* จำกัดความสูงไม่ให้เกิน 520px (จอกว้างมากๆ ไม่ให้กราฟสูงล้นจอ) แต่ก็ไม่เกิน 65% ของความสูงจอที่มองเห็น
+     ด้วย (กันจอเตี้ย/มือถือแนวนอนที่ 520px ก็ยังสูงเกินไป) — ลด max-width ให้แคบลงเองอัตโนมัติเพื่อรักษา
+     สัดส่วนกราฟไว้ (ไม่บีบยืดผิดสัดส่วน) เวลาความสูงถูกจำกัดจนไม่เต็ม 100% ของความกว้างกรอบ */
+  max-height: min(520px, 65vh);
+  display: block;
+  margin: 0 auto; /* กรณี max-height ทำให้กราฟแคบกว่ากรอบ ให้อยู่กึ่งกลางแทนที่จะชิดซ้าย */
+}
+
+.scurve-chart__grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.scurve-chart__grid-border {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.scurve-chart__axis-label {
+  font-size: 10px;
+  fill: var(--ink-soft);
+}
+
+.scurve-chart__line-plan {
+  fill: none;
+  stroke: #F5820D;
+  stroke-width: 2.5;
+}
+
+.scurve-chart__line-actual {
+  fill: none;
+  stroke: #1E8E4F;
+  stroke-width: 2.5;
+}
+
+.scurve-chart__legend {
+  display: flex;
+  flex-wrap: wrap; /* ถ้า header แคบเกินจนอยู่แถวเดียวกับ title ไม่พอ ให้ตกไปแถวใหม่แทนล้นกรอบ */
+  gap: 6px 14px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+.scurve-chart__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap; /* "แผน"/"ผลงานจริง" สั้นอยู่แล้ว กันห่อกลางคำเผื่อพื้นที่บีบมากๆ บนมือถือ */
+}
+
+.scurve-chart__swatch {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+}
+.scurve-chart__swatch--plan { background: #F5820D; }
+.scurve-chart__swatch--actual { background: #1E8E4F; }
+
+/* ===== กล่องสรุป Plan/Actual/Gain(+)/Delay(-) ณ วันนี้ + เส้นชี้ ===== */
+.scurve-chart__today-line {
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.scurve-chart__dot {
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+.scurve-chart__dot--plan { fill: #F5820D; }
+.scurve-chart__dot--actual { fill: #1E8E4F; }
+
+.scurve-chart__callout-leader {
+  stroke: var(--ink-soft);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.scurve-chart__callout-box {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.scurve-chart__callout-text {
+  font-size: 10.5px;
+  fill: var(--ink);
+}
+.scurve-chart__callout-text--gain { fill: #1E8E4F; font-weight: 700; }
+.scurve-chart__callout-text--delay { fill: var(--danger); font-weight: 700; }
+
+/* ===== มือถือจอแคบ: ลด padding รอบกราฟ + ขนาดตัวอักษร title ให้พอดีจอ ไม่ล้น ===== */
+@media screen and (max-width: 480px) {
+  .scurve-chart { padding: 10px; }
+  .scurve-chart__title { font-size: 12px; }
+  .scurve-chart__legend { font-size: 10px; gap: 4px 10px; }
+}
+
+/* ===== Tab "Group S-Curve" — กริดการ์ดย่อของทุกกลุ่มงาน ===== */
+.scurve-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* แถวละ 2 กล่องตามที่ขอ */
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* จอมือถือแคบมาก 2 คอลัมน์จะแคบเกินจนอ่านไม่ออกเลย เหลือคอลัมน์เดียวแทน */
+@media screen and (max-width: 640px) {
+  .scurve-grid { grid-template-columns: 1fr; }
+}
+
+/* popup ขยายเต็มจอตอนคลิกที่การ์ดย่อ */
+.scurve-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 32, 46, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.scurve-modal {
+  background: var(--surface);
+  border-radius: 10px;
+  max-width: 960px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.scurve-modal__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.scurve-modal__close {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink);
+}
+.scurve-modal__close:hover { border-color: var(--ink); }
+
+@media screen and (max-width: 480px) {
+  .scurve-modal-backdrop { padding: 0; }
+  .scurve-modal { max-width: 100%; max-height: 100vh; height: 100%; border-radius: 0; }
+}

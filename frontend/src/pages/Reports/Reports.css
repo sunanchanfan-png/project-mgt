@@ -1,0 +1,1099 @@
+/* src/pages/Reports/Reports.css
+   หมายเหตุ: คัดลอกคลาสพื้นฐาน (toolbar/tabs/status/ปุ่ม/link-btn/modal) มาจาก ProjectManagement.css และ
+   PermissionApproval.css ให้เหมือนกันเป๊ะ ตามธรรมเนียมเดิมของโปรเจกต์นี้ (แต่ละหน้ามีสำเนา CSS ของตัวเอง) */
+
+.pdata-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pdata-toolbar__filters-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.pdata-toolbar__filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.pdata-toolbar__filter select {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--ink);
+  max-width: 320px;
+}
+
+.pdata-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdata-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0;
+}
+
+.pdata-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.pdata-tab:hover { color: var(--ink); }
+.pdata-tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.pdata-status {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.pdata-status--warn { color: var(--danger); }
+
+.btn-primary {
+  padding: 8px 18px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary--sm {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 11px;
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.btn-secondary:hover { border-color: var(--ink); }
+.btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-secondary--sm {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  padding: 0;
+  font-weight: 500;
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }
+.link-btn--danger { color: var(--danger); }
+
+.progress-table-wrap { margin-top: 4px; }
+
+.progress-table__week-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.perm-table__actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* ===== Modal (ใช้ร่วมกับหน้า PermissionApproval — คัดลอกมาให้ครบในไฟล์นี้ด้วย) ===== */
+.perm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 32, 46, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.perm-modal {
+  background: var(--surface);
+  border-radius: 10px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.perm-modal__title {
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+
+.perm-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* ===== เฉพาะหน้านี้ ===== */
+
+.reports-week-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.reports-week-item {
+  text-align: left;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 12.5px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.reports-week-item:hover:not(:disabled) { border-color: var(--accent); background: var(--surface); }
+.reports-week-item:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.reports-item-input {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--ink);
+  min-width: 220px;
+}
+.reports-item-input--full {
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
+.reports-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.reports-items-table {
+  width: 100%;
+  min-width: 520px; /* กันไม่ให้คอลัมน์บีบจนข้อความห่อบรรทัดบนจอมือถือ — ให้ scroll แนวนอนดูแทน (สัดส่วน
+    ความกว้างคอลัมน์เดิมยังเท่าเดิมทุกอย่าง แค่บังคับความกว้างขั้นต่ำของทั้งตารางไว้เท่านั้น) */
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.reports-items-table th, .reports-items-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap; /* ห้ามห่อบรรทัด บังคับ scroll แนวนอนแทนถ้าจอแคบ */
+}
+.reports-items-table td:nth-child(2) {
+  white-space: normal; /* คอลัมน์ "รายการ" (เนื้อหาหลัก) ยอมห่อบรรทัดได้ตามปกติ ไม่งั้นข้อความยาวจะทำให้
+    ตารางกว้างเกินจำเป็นจนต้อง scroll เยอะโดยไม่จำเป็น */
+  min-width: 200px;
+}
+.reports-items-table th {
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+@media screen and (max-width: 640px) {
+  .reports-item-input { min-width: 140px; }
+}
+
+.progress-table__photo-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.progress-table__photo-btn {
+  cursor: pointer;
+  padding: 3px 8px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.progress-table__photo-btn:hover { border-color: var(--accent); }
+
+.progress-table__photo-chip {
+  font-size: 9px;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  padding: 2px 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.progress-table__photo-chip button {
+  background: none;
+  border: none;
+  font-size: 9px;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.progress-table__photo-thumb {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  display: block;
+}
+
+.progress-table__photo-empty {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.progress-table__photo-count {
+  font-size: 10px;
+  color: var(--ink-soft);
+  margin-left: 2px;
+}
+
+.progress-table__photo-uploading {
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+/* ===== Tab "Plan&Progress" — ตาราง WBS อ่านอย่างเดียว + คอลัมน์รายการ (คำอธิบาย) แก้ไขได้ ===== */
+
+.progress-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.progress-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 11px;
+  table-layout: fixed;
+}
+
+.progress-table th,
+.progress-table td {
+  border: 1px solid #8A97A0; /* เข้มกว่า var(--line) เดิม (จางเกินไปจนแทบมองไม่เห็น) — ใช้สีเดียวกันทั้ง
+    ตาราง (header + เนื้อแถวปกติ) ให้เป็น grid เดียวกันทั้งตาราง ไม่ใช่แค่เส้น header เข้มกว่าอย่างเดียว */
+  padding: 6px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.progress-table thead th {
+  background: var(--bg);
+  font-weight: 700;
+  color: var(--ink-soft);
+  position: sticky;
+  top: 0;
+}
+
+.progress-table td.progress-table__label-col {
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.progress-table th.progress-table__label-col {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.progress-table__row--l1 td { font-weight: 700; background: var(--bg); }
+.progress-table__row--l2 td { font-weight: 600; }
+.progress-table__row--l3 td { color: var(--ink-soft); }
+.progress-table__row--l2 .progress-table__label-col { padding-left: 24px; }
+.progress-table__row--l3 .progress-table__label-col { padding-left: 40px; }
+
+.plan-progress-table td { white-space: normal; } /* คอลัมน์รายการยอมให้ข้อความยาวห่อบรรทัดได้ ต่างจากตารางอื่น */
+
+.plan-progress-remark-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.plan-progress-remark-input:disabled { opacity: 0.6; }
+
+.plan-progress-remark-input--disabled {
+  background: var(--bg);
+  color: var(--ink-soft);
+  border-style: dashed;
+  cursor: not-allowed;
+  opacity: 1; /* override ด้านบน — อยากให้เทาชัดเจนกว่าปกติแบบ disabled ทั่วไป ไม่ได้แค่จางลง */
+}
+
+.plan-progress-overall {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.plan-progress-overall__label { font-weight: 700; color: var(--ink); }
+.plan-progress-overall__item { display: flex; align-items: center; gap: 6px; }
+.plan-progress-overall__item-label { color: var(--ink-soft); font-size: 12px; }
+.plan-progress-overall__item-value { font-weight: 700; }
+.plan-progress--gain { color: #1E8E4F; }
+.plan-progress--delay { color: var(--danger); }
+
+/* ===== Tab "งานสัปดาห์หน้า" — จัดกลุ่มตาม WBS Level1 ===== */
+
+.next-week-add-form {
+  display: flex;
+  flex-wrap: nowrap; /* ห้ามห่อขึ้นบรรทัดใหม่บนมือถือ ให้ scroll แนวนอนดูแทน (สัดส่วนความกว้างแต่ละช่อง
+    เดิมยังเท่าเดิม แค่บังคับไม่ให้บีบ/ตกบรรทัดจนกดปุ่ม/พิมพ์ลำบาก) */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.next-week-add-form > * { flex-shrink: 0; }
+.next-week-add-form .next-week-content-input { flex-shrink: 1; }
+
+.next-week-select {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--ink);
+  max-width: 220px;
+}
+
+.next-week-content-input { min-width: 260px; flex: 1; }
+.next-week-target-input { width: 90px; }
+
+.next-week-group {
+  margin-bottom: 18px;
+}
+
+.next-week-group__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.next-week-group__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.next-week-group__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  font-size: 12.5px;
+  border-bottom: 1px dashed var(--line);
+}
+.next-week-group__item:last-child { border-bottom: none; }
+
+.next-week-group__bullet {
+  color: #1E8E4F;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.next-week-group__content {
+  flex: 1;
+  color: var(--ink);
+}
+
+.next-week-group__actions {
+  flex-shrink: 0;
+}
+
+.next-week-edit-row {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+.next-week-edit-row > * { flex-shrink: 0; }
+
+@media screen and (max-width: 640px) {
+  .next-week-content-input { min-width: 160px; }
+}
+
+/* ===== Tab "รูปถ่าย" — เลือกรูปจากที่อัปโหลดไว้แล้วมาใส่ในรายงาน ===== */
+
+.photos-group {
+  margin-bottom: 20px;
+}
+
+.photos-group__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.photos-group__count {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.photos-group__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.photos-thumb-btn {
+  position: relative;
+  padding: 0;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg);
+  aspect-ratio: 4 / 3;
+}
+.photos-thumb-btn:hover:not(:disabled) { border-color: var(--accent); }
+.photos-thumb-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.photos-thumb-btn--selected {
+  border-color: #1E8E4F;
+  border-width: 3px;
+}
+
+.photos-thumb-btn__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photos-thumb-btn__badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(30, 142, 79, 0.9);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 0;
+  text-align: center;
+}
+
+/* ===== เลย์เอาต์ 3 คอลัมน์: กิจกรรมงาน (JE) / คุณภาพงาน / ความปลอดภัย ===== */
+.photos-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.photos-3col__col {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--surface);
+  min-height: 120px;
+}
+
+.photos-3col__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--accent);
+}
+
+.photos-3col__hint {
+  display: block;
+  font-weight: 400;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  margin-top: 3px;
+}
+
+.photos-group__grid--compact {
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 6px;
+}
+
+.photos-thumb-plain {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.photos-thumb-plain__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photos-thumb-plain__remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(196, 67, 58, 0.9);
+  color: #fff;
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.photos-thumb-plain__remove:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media screen and (max-width: 900px) {
+  .photos-3col { grid-template-columns: 1fr; }
+}
+
+/* ===== Tab "เล่มรายงาน" — พรีวิวหน้าตารายงานจริงแบบกระดาษ ===== */
+
+.report-preview {
+  background: transparent;
+  border: none;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0;
+  color: #12202E;
+}
+
+/* ===== แต่ละหน้า (.report-print-page) โชว์เป็น "แผ่นกระดาษ" แยกกันชัดเจนตอนดูบนจอ (ไม่ใช่แค่ตอนพิมพ์)
+   กันสับสนว่าเนื้อหาไหนอยู่หน้าไหน (เดิมทุกหน้าไหลต่อกันเป็นเนื้อเดียว มองไม่ออกว่าหน้าไหนคือหน้าไหน) */
+.report-print-page {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  padding: 40px 48px;
+  margin-bottom: 24px;
+}
+
+/* หน้าปก: จัดข้อความ+เส้นคั่นไว้ที่ประมาณ 30% จากขอบบนของหน้า (ไม่ใช่กึ่งกลางเป๊ะ 50%) */
+.report-print-page--cover {
+  min-height: 700px;
+  padding-top: 210px; /* ~30% ของ min-height ด้านบน (700px * 0.3 = 210px) */
+}
+
+.report-preview__cover {
+  text-align: center;
+  padding: 24px 0 32px;
+  border-bottom: 2px solid var(--line);
+  margin-bottom: 24px;
+}
+.report-preview__cover-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2E5C9A;
+}
+.report-preview__cover-sub {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2E5C9A;
+  margin-top: 6px;
+}
+.report-preview__cover-date {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 10px;
+}
+
+.report-preview__h {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2E5C9A;
+  margin: 28px 0 12px;
+}
+
+/* หัวข้อย่อยระดับ h4 (เช่น "กิจกรรมงานที่ทำในรอบสัปดาห์นี้", "ตารางสรุปปริมาณงานและผลงานรวมทั้งโครงการ")
+   — ต้องมี class นี้ (ไม่ใช่แค่ inline style) เพื่อให้กฎ page-break-after: avoid ใน @media print จับได้
+   ไม่งั้น title กับตารางที่ตามมาจะแยกกันคนละหน้าได้ถ้าที่เหลือบนหน้าปัจจุบันไม่พอ */
+.report-preview__h4 {
+  /* ไม่ต้องมี style อื่นเพิ่ม (inline style เดิมยังคุมหน้าตาอยู่) แค่มี class ไว้ให้ print rule จับ */
+}
+
+/* ===== ปรับ sub-items ในข้อ 4, 5, 6, 7 ===== */
+
+/* ข้อ 5,6,7: มีข้อมูล */
+.report-preview__list {
+  margin: 0 0 8px;
+  padding-left: 44px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+/* ข้อ 5,6,7: ไม่มีข้อมูล (-) */
+.report-preview__empty {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+  padding-left: 44px;
+}
+
+/* ข้อ 4: 1.) ถอย 22px */
+.report-preview__nextweek-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  padding-left: 22px;
+}
+
+/* ข้อ 4: ✓ ถอย 44px */
+.report-preview__list--check {
+  list-style: none;
+  padding-left: 44px;
+  margin: 0;
+}
+.report-preview__list--check li {
+  padding-left: 0;
+  margin-left: 0;
+}
+.report-preview__list--check li::before {
+  content: '✓ ';
+  color: #1E8E4F;
+  font-weight: 700;
+}
+
+.report-preview__item-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  max-width: 320px;
+  margin: 6px 0 10px;
+}
+.report-preview__item-photo-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+.report-preview__nextweek-group {
+  margin-bottom: 14px;
+}
+
+.report-preview__photo-group {
+  margin: 18px 0;
+}
+.report-preview__photo-title {
+  font-weight: 700;
+  text-decoration: underline;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.report-preview__photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  max-width: 100%;
+}
+.report-preview__photo-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+@media screen and (max-width: 640px) {
+  .report-preview { padding: 20px; }
+  .report-preview__photo-grid { grid-template-columns: 1fr; }
+}
+
+/* ===== ปุ่มดูรูป (ตอนไม่ได้แก้ไข) + popup พรีวิว — เหมือน Menu3 เป๊ะ ===== */
+
+.progress-table__photo-view-btn {
+  background: var(--accent-soft);
+  border: none;
+  border-radius: 999px;
+  color: var(--accent-hover);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.progress-table__photo-view-btn:hover { background: var(--accent); color: #fff; }
+
+.reports-photo-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 32, 46, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.reports-photo-modal {
+  background: var(--surface);
+  border-radius: 10px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.reports-photo-modal__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.reports-photo-modal__close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.reports-photo-modal__close:hover { color: var(--ink); }
+
+.reports-photo-modal__title {
+  margin-top: 0;
+  font-size: 14px;
+}
+
+.view-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.view-photos-grid__img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+/* ===== เพิ่มเติมสำหรับแสดง thumbnail ในโหมดอ่านอย่างเดียว ===== */
+.progress-table__photo-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.progress-table__photo-thumb {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  display: block;
+}
+
+.progress-table__photo-empty {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+/* ===== Sticky Header สำหรับ Reports (ทำงานร่วมกับ Layout.css เดิม) ===== */
+.reports-sticky-header {
+  position: sticky;
+  top: 0;
+  background: var(--surface, #ffffff);
+  z-index: 50;
+  padding: 8px 0 4px 0;
+  margin-bottom: 12px;
+  /* ไม่มี border-bottom ที่ตัว sticky header เอง — เดิมซ้อนกับเส้นของ .pdata-tabs (border-bottom ใต้แถบ
+     แท็บ) ทำให้เห็นเป็นเส้น 2 เส้นติดกัน เหลือแค่เส้นเดียวของ .pdata-tabs ก็พอ */
+}
+
+.reports-content {
+  padding-top: 4px;
+}
+
+/* ===== ป้องกันตารางห่อบนมือถือ — ให้ scroll แนวนอนแทน ===== */
+.report-preview .progress-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 12px;
+}
+
+/* ===== Mobile: ปรับ padding ===== */
+@media screen and (max-width: 768px) {
+  .reports-sticky-header {
+    padding: 6px 0 2px 0;
+  }
+  .reports-sticky-header .pdata-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .reports-sticky-header .pdata-toolbar__filters-group {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .reports-sticky-header .pdata-tabs {
+    gap: 4px;
+  }
+  .reports-sticky-header .pdata-tab {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}
+
+/* ===== Print Styles — สำหรับพิมพ์เป็น A4 หลายหน้า (ปรับปรุงแล้ว) ===== */
+@media print {
+  /* ซ่อนส่วนที่ไม่ต้องการพิมพ์ */
+  .btn-primary,
+  .btn-secondary,
+  .pdata-toolbar,
+  .reports-sticky-header,
+  .reports-content .pdata-toolbar,
+  .report-preview-toolbar-sticky,
+  .app-shell__topbar,
+  .app-shell__menu-btn,
+  .app-shell__user,
+  .sidebar {
+    display: none !important;
+  }
+
+  /* ตั้งค่าหน้ากระดาษ A4 */
+  @page {
+    size: A4;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+
+  /* reset overflow ของ wrapper ที่อาจจะบีบให้เหลือ 1 หน้า */
+  html,
+  body,
+  .app-shell,
+  .app-shell__viewport,
+  .app-shell__content,
+  .progress-table-wrap,
+  .report-preview-wrapper {
+    height: auto !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    display: block !important;
+  }
+
+  .app-shell__content {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .report-preview {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    overflow: visible !important;
+    height: auto !important;
+    page-break-after: auto;
+  }
+
+  /* ตอนพิมพ์จริง ไม่ต้องมีกรอบ/เงา/ระยะห่างแบบ "แผ่นกระดาษ" ที่ใส่ไว้ให้ดูง่ายตอนอยู่บนจอ — กระดาษจริง
+     ไม่ต้องมีกรอบตกแต่งซ้อนอีกชั้น ให้ page-break ของ @page จัดการแบ่งหน้าจริงแทน */
+  .report-print-page {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  /* หน้าปก: ไม่ใช้ height: 100vh อีกต่อไป (ทำให้เนื้อหาล้นไปสร้างหน้าเปล่าที่ 2 โดยไม่ตั้งใจ ในกระดาษ A4
+     จริงพื้นที่พิมพ์ได้ ~267mm หลังหักขอบบน-ล่าง 15mm ตาม @page — ปล่อยความสูงไหลตามเนื้อหาจริงแทน แค่ดัน
+     padding-top ให้ตำแหน่งเริ่มต้นอยู่ที่ ~30% ของพื้นที่พิมพ์ ตรงกับตอนดูบนจอ) */
+  .report-print-page--cover {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 80mm !important; /* ~30% ของพื้นที่พิมพ์จริง (267mm * 0.3 ≈ 80mm) */
+  }
+
+  /* ตารางเลื่อนแนวนอนให้แสดงเต็มไม่ต้อง scroll */
+  .progress-table-scroll {
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    page-break-inside: avoid;
+  }
+
+  .progress-table {
+    min-width: auto !important;
+    width: 100% !important;
+    font-size: 9px !important;
+    table-layout: auto !important;
+  }
+
+  .progress-table th,
+  .progress-table td {
+    white-space: normal !important;
+    padding: 4px 6px !important;
+  }
+
+  /* position: sticky ทำให้เส้นขอบบนของ header หายไปตอนพิมพ์จริง (พฤติกรรมที่รู้กันของเบราว์เซอร์ตอน
+     print กับ sticky+border-collapse ผสมกัน) — sticky มีไว้ใช้ตอน scroll บนจอเท่านั้น พิมพ์จริงไม่มี
+     scroll อยู่แล้ว ปิดทิ้งไปเลยตอนพิมพ์ กันปัญหานี้ตรงจุด */
+  .progress-table thead th {
+    position: static !important;
+  }
+
+  /* S-Curve */
+  .report-preview .plan-progress-overall {
+    page-break-after: avoid;
+  }
+
+  /* ===== แบ่งหน้าแบบชัดเจนตาม wrapper .report-print-page ทีละหน้า (7 หน้าตายตัว) แทนการเดา break
+     จาก header/photo-group เป็นรายตัว (แบบเดิมทำให้จำนวนหน้าไม่คงที่ ขึ้นกับจำนวนกลุ่มรูป/รายการจริง) */
+  .report-print-page {
+    page-break-after: always;
+  }
+  .report-print-page--last {
+    page-break-after: auto;
+  }
+
+  /* หัวข้อหลักภายในหน้าเดียวกัน ไม่ต้องขึ้นหน้าใหม่เอง (ควบคุมด้วย wrapper ด้านบนแทนแล้ว) */
+  .report-preview__h {
+    page-break-before: auto;
+    page-break-after: avoid;
+  }
+
+  /* หัวข้อย่อย h4 ต้องติดกับเนื้อหา/ตารางที่ตามมาเสมอ ห้ามแยกคนละหน้า (ปัญหาที่เจอ: title ลอยเดี่ยวๆ
+     อยู่หน้าหนึ่ง ตารางเลื่อนไปอีกหน้า เพราะ h4 เดิมเป็นแค่ inline style ไม่มี class ให้กฎนี้จับ) */
+  .report-preview__h4 {
+    page-break-after: avoid;
+  }
+
+  /* ตารางสรุป ขึ้นหน้าใหม่ถ้าจำเป็น */
+  .plan-progress-table {
+    page-break-inside: avoid;
+  }
+
+  /* กลุ่มรูปถ่าย JE — อยู่รวมหน้าเดียวกันทั้งหมด (หน้าที่ 4) กันแค่ไม่ให้ตัดกลางรูปหนึ่งกลุ่ม */
+  .report-preview__photo-group {
+    page-break-inside: avoid;
+  }
+
+  /* ป้องกันรายการย่อยแตกกลางหน้า */
+  .report-preview__nextweek-group,
+  .report-preview__list,
+  .report-preview__list--check {
+    page-break-inside: avoid;
+  }
+
+  /* รูปถ่ายคุณภาพ/ความปลอดภัย */
+  .report-preview__item-photo-grid {
+    page-break-inside: avoid;
+  }
+
+  /* รูปภาพไม่ให้เกินขอบกระดาษ */
+  .report-preview__photo-img,
+  .report-preview__item-photo-img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .report-preview__photo-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* 3 คอลัมน์ (รูปถ่าย) */
+  .photos-3col {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+  }
+  .photos-3col__col {
+    border: 1px solid #ddd !important;
+    padding: 10px !important;
+  }
+
+  /* พิมพ์สีดำ */
+  .report-preview {
+    color: #000 !important;
+  }
+  .report-preview__cover-title,
+  .report-preview__cover-sub {
+    color: #000 !important;
+  }
+}
