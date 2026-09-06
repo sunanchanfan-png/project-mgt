@@ -1,0 +1,17 @@
+/* src/pages/Foreman/ForemanSCurveTab.css */
+.foreman-scurve {
+  padding: 12px;
+}
+
+.foreman-scurve__status {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+  padding: 24px 0;
+}
+.foreman-scurve__status--warn { color: var(--danger); }
+
+.foreman-scurve__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
