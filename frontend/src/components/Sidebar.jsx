@@ -6,8 +6,8 @@ const MENU_ITEMS = [
   { label: 'เปิดโครงการ', path: '/dashboard', menuKey: 'open_project' },
   { label: 'สร้างข้อมูลโครงการ', path: '/project-data', menuKey: 'project_data' },
   { label: 'การจัดการโครงการ', path: '/project-management', menuKey: 'project_management' },
-  { label: 'การจัดการต้นทุน', path: null, menuKey: null },
   { label: 'จัดทำรายงาน', path: '/reports', menuKey: 'reports' },
+  { label: 'การจัดการต้นทุน', path: null, menuKey: null },
   { label: 'การวิเคราะห์', path: null, menuKey: null },
 ];
 
