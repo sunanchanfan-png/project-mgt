@@ -1,0 +1,73 @@
+/* src/pages/Foreman/ForemanApp.css */
+.foreman-app {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.foreman-app__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--charcoal);
+  color: #fff;
+}
+
+.foreman-app__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.foreman-app__logout {
+  background: none;
+  border: 1px solid var(--charcoal-line);
+  color: var(--charcoal-text);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.foreman-app__user {
+  padding: 8px 16px 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.foreman-app__selectors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.foreman-app__select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.foreman-app__week-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.foreman-app__week-btn {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.foreman-app__week-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}

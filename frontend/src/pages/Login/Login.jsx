@@ -18,8 +18,10 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(username, password);
-      navigate('/dashboard');
+      const userData = await login(username, password);
+      // role "foreman" ให้เข้าหน้ากรอกงานภาคสนามโดยตรง (ไม่เห็นเมนูอื่นในระบบเลย) ส่วน role อื่นเข้า
+      // หน้า dashboard เต็มรูปแบบตามปกติ
+      navigate(userData.role === 'foreman' ? '/foreman' : '/dashboard');
     } catch (err) {
       const msg = err.response?.data?.error || 'เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง';
       setError(msg);
