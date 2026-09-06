@@ -67,7 +67,7 @@ function fmtDMY(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-export default function CompiledReportTab({ reportId, reportLabel, project, report }) {
+export default function CompiledReportTab({ reportId, reportLabel, project, report, printBarHidden = false }) {
   const [progress, setProgress] = useState(null);
   const [itemsByCategory, setItemsByCategory] = useState(null);
   const [nextWeekGroups, setNextWeekGroups] = useState(null);
@@ -326,13 +326,16 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
 
   return (
     <div className="progress-table-wrap" ref={printRef}>
-      {/* ===== ปุ่ม Print ===== */}
-      <div className="pdata-toolbar" style={{ marginTop: 0, marginBottom: 12 }}>
-        <div style={{ flex: 1 }} />
-        <button className="btn-primary btn-primary--sm" onClick={handlePrint} disabled={loading}>
-          🖨️ พิมพ์
-        </button>
-      </div>
+      {/* ===== ปุ่ม Print — ซ่อนได้ตอนอยู่บนมือถือผ่าน printBarHidden (ควบคุมจาก Reports.jsx จุดเดียวกับ
+          filter+tabs ด้านบน — ให้ผู้ใช้เปิดดูเนื้อหาเล่มรายงานเต็มจอได้ทันทีโดยไม่ต้องเลื่อนผ่านส่วนนี้) ===== */}
+      {!printBarHidden && (
+        <div className="pdata-toolbar" style={{ marginTop: 0, marginBottom: 12 }}>
+          <div style={{ flex: 1 }} />
+          <button className="btn-primary btn-primary--sm" onClick={handlePrint} disabled={loading}>
+            🖨️ พิมพ์
+          </button>
+        </div>
+      )}
 
       {loading && <p>กำลังโหลดข้อมูล...</p>}
       {error && <p className="pdata-status pdata-status--warn">{error}</p>}

@@ -899,6 +899,31 @@
      แท็บ) ทำให้เห็นเป็นเส้น 2 เส้นติดกัน เหลือแค่เส้นเดียวของ .pdata-tabs ก็พอ */
 }
 
+/* ===== ปุ่มซ่อน/โชว์ filter+tabs (เฉพาะ Tab "เล่มรายงาน" บนมือถือ) ===== */
+.reports-header-collapse-toggle {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.reports-header-collapsible {
+  max-height: 2000px;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+.reports-header-collapsible--collapsed {
+  max-height: 0;
+  margin: 0;
+}
+
 .reports-content {
   padding-top: 4px;
 }

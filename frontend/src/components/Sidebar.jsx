@@ -2,18 +2,16 @@
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
 
-// ลำดับเมนูใน Sidebar — จัดให้ตรงกับ menuRegistry (Backend)
-// เปิดโครงการ → สร้างข้อมูลโครงการ → การจัดการโครงการ → จัดทำรายงาน → (อนาคต: การจัดการต้นทุน, การวิเคราะห์)
 const MENU_ITEMS = [
   { label: 'เปิดโครงการ', path: '/dashboard', menuKey: 'open_project' },
   { label: 'สร้างข้อมูลโครงการ', path: '/project-data', menuKey: 'project_data' },
   { label: 'การจัดการโครงการ', path: '/project-management', menuKey: 'project_management' },
-  { label: 'จัดทำรายงาน', path: '/reports', menuKey: 'reports' }, // ← ย้ายมาอยู่ตรงนี้ (ต่อจาก Menu 3)
   { label: 'การจัดการต้นทุน', path: null, menuKey: null },
+  { label: 'จัดทำรายงาน', path: '/reports', menuKey: 'reports' },
   { label: 'การวิเคราะห์', path: null, menuKey: null },
 ];
 
-export default function Sidebar({ open, onToggle }) {
+export default function Sidebar({ open, onToggle, onNavigate }) {
   const { logout, user, canAccessMenu } = useAuth();
   const isSystemMgr = user?.role === 'admin' || user?.role === 'system_mgr';
 
@@ -36,7 +34,12 @@ export default function Sidebar({ open, onToggle }) {
             key={item.label}
             href={item.path || '#'}
             className={`sidebar__item ${!item.path ? 'sidebar__item--disabled' : ''}`}
-            onClick={(e) => { if (!item.path) e.preventDefault(); }}
+            onClick={(e) => {
+              if (!item.path) { e.preventDefault(); return; }
+              // ปิด sidebar อัตโนมัติหลังเลือกเมนู (เฉพาะตอนเปิดผ่านมือถือ — ดู logic จริงใน onNavigate
+              // ที่ Layout.jsx ส่งมา ตรงนี้แค่เรียกเฉยๆ ไม่ต้องมาเช็คขนาดจอซ้ำอีกที)
+              if (onNavigate) onNavigate();
+            }}
           >
             <span className="sidebar__item-dot" aria-hidden="true" />
             <span>{item.label}</span>
@@ -44,7 +47,7 @@ export default function Sidebar({ open, onToggle }) {
         ))}
 
         {isSystemMgr && (
-          <a href="/permissions" className="sidebar__item sidebar__item--admin">
+          <a href="/permissions" className="sidebar__item sidebar__item--admin" onClick={() => onNavigate && onNavigate()}>
             <span className="sidebar__item-dot" aria-hidden="true" />
             <span>อนุมัติและกำหนดสิทธิ์</span>
           </a>

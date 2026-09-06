@@ -2,19 +2,29 @@
 import { useState } from 'react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
+import useIsMobile from '../hooks/useIsMobile';
 import './Layout.css';
 
 export default function Layout({ title, children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isMobile = useIsMobile();
+  // เปิดผ่านมือถือ (จอแคบ) ให้ sidebar ปิดไว้เป็นค่าเริ่มต้นเสมอ กันไม่ให้บังเนื้อหาทั้งจอตอนเพิ่งเข้ามา —
+  // เปิดผ่าน PC (จอกว้าง) ยังคงเปิดไว้เป็นค่าเริ่มต้นเหมือนเดิมทุกอย่าง ไม่กระทบพฤติกรรมเดิมของ PC เลย
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const { user } = useAuth();
 
   function toggleSidebar() {
     setSidebarOpen((o) => !o);
   }
 
+  // กดเลือกเมนูใน sidebar แล้ว — ปิด sidebar ให้อัตโนมัติเฉพาะตอนเปิดผ่านมือถือ (PC ยังคงเปิดค้างไว้ตามปกติ
+  // ไม่ต้องปิดเอง เพราะจอกว้างพอที่จะเห็นทั้ง sidebar และเนื้อหาพร้อมกันได้อยู่แล้ว)
+  function handleNavigate() {
+    if (isMobile) setSidebarOpen(false);
+  }
+
   return (
     <div className="app-shell">
-      <Sidebar open={sidebarOpen} onToggle={toggleSidebar} />
+      <Sidebar open={sidebarOpen} onToggle={toggleSidebar} onNavigate={handleNavigate} />
 
       <div className="app-shell__viewport">
         <header className="app-shell__topbar">

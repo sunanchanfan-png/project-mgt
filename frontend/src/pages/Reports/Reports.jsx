@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Layout from '../../components/Layout';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import useIsMobile from '../../hooks/useIsMobile';
 import ReportItemsTab from './ReportItemsTab';
 import PlanProgressTab from './PlanProgressTab';
 import NextWeekTab from './NextWeekTab';
@@ -35,6 +36,7 @@ function fmtDMY(dateStr) {
 
 export default function Reports() {
   const { canAccessTab } = useAuth();
+  const isMobile = useIsMobile();
   const TABS = ALL_TABS.filter((t) => canAccessTab(MENU_KEY, t.key));
 
   const [projects, setProjects] = useState([]);
@@ -45,6 +47,10 @@ export default function Reports() {
   const [activeTab, setActiveTab] = useState(null);
   const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState('');
+  // ซ่อน filter+tabs+ปุ่มลบ เฉพาะตอนอยู่ Tab "เล่มรายงาน" บนมือถือ — default เป็นซ่อนไว้ก่อนเสมอ (เปิดดู
+  // เล่มรายงานเต็มจอได้ทันทีไม่ต้องเลื่อนผ่านส่วนนี้) กดปุ่มเพื่อเปิดโชว์กลับมาได้ตลอดเวลา
+  const [headerCollapsed, setHeaderCollapsed] = useState(true);
+  const showCollapseToggle = isMobile && activeTab === 'compiled';
 
   useEffect(() => {
     if (TABS.length === 0) { setActiveTab(null); return; }
@@ -111,55 +117,69 @@ export default function Reports() {
     <Layout title="จัดทำรายงาน">
       {/* ===== Sticky Header: Toolbar + Tabs ===== */}
       <div className="reports-sticky-header">
-        <div className="pdata-toolbar">
-          <div className="pdata-toolbar__filters-group">
-            <div className="pdata-toolbar__filter">
-              <span>เลือกโครงการ</span>
-              <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.project_code} - {p.name}</option>
-                ))}
-              </select>
+        {/* ปุ่มซ่อน/โชว์ ส่วน filter+tabs+print — โชว์เฉพาะตอนอยู่ Tab "เล่มรายงาน" บนมือถือเท่านั้น (Tab
+            อื่นๆ หรือเปิดผ่าน PC ไม่มีปุ่มนี้ ทุกอย่างแสดงตามปกติเหมือนเดิมทุกจุด) */}
+        {showCollapseToggle && (
+          <button
+            type="button"
+            className="reports-header-collapse-toggle"
+            onClick={() => setHeaderCollapsed((c) => !c)}
+          >
+            {headerCollapsed ? '▾ แสดงตัวเลือกโครงการ/แท็บ' : '▴ ซ่อนตัวเลือกโครงการ/แท็บ'}
+          </button>
+        )}
+
+        <div className={showCollapseToggle && headerCollapsed ? 'reports-header-collapsible reports-header-collapsible--collapsed' : 'reports-header-collapsible'}>
+          <div className="pdata-toolbar">
+            <div className="pdata-toolbar__filters-group">
+              <div className="pdata-toolbar__filter">
+                <span>เลือกโครงการ</span>
+                <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.project_code} - {p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="pdata-toolbar__filter">
+                <span>รายงานฉบับที่</span>
+                <select value={reportId} onChange={(e) => setReportId(e.target.value)} disabled={reports.length === 0}>
+                  {reports.length === 0 && <option value="">ยังไม่มีรายงาน</option>}
+                  {reports.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      #{r.report_no} ({fmtDMY(r.week_start)} - {fmtDMY(r.week_end)})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="pdata-toolbar__filter">
-              <span>รายงานฉบับที่</span>
-              <select value={reportId} onChange={(e) => setReportId(e.target.value)} disabled={reports.length === 0}>
-                {reports.length === 0 && <option value="">ยังไม่มีรายงาน</option>}
-                {reports.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    #{r.report_no} ({fmtDMY(r.week_start)} - {fmtDMY(r.week_end)})
-                  </option>
-                ))}
-              </select>
+            <div className="pdata-toolbar__actions">
+              {currentReport && (
+                <button className="btn-secondary btn-secondary--sm" onClick={handleDeleteReport}>ลบรายงานฉบับนี้</button>
+              )}
             </div>
           </div>
-          <div className="pdata-toolbar__actions">
-            {currentReport && (
-              <button className="btn-secondary btn-secondary--sm" onClick={handleDeleteReport}>ลบรายงานฉบับนี้</button>
-            )}
-          </div>
+
+          {preparing && <p className="pdata-status">กำลังเตรียมรายงานสัปดาห์ปัจจุบัน...</p>}
+          {error && <p className="pdata-status pdata-status--warn">{error}</p>}
+
+          {TABS.length === 0 && (
+            <p className="pdata-status pdata-status--warn">คุณยังไม่มีสิทธิ์เข้าถึง Tab ใดในเมนูนี้ กรุณาติดต่อผู้ดูแลระบบ</p>
+          )}
+
+          {TABS.length > 0 && !preparing && (
+            <div className="pdata-tabs">
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  className={`pdata-tab ${activeTab === t.key ? 'pdata-tab--active' : ''}`}
+                  onClick={() => setActiveTab(t.key)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-
-        {preparing && <p className="pdata-status">กำลังเตรียมรายงานสัปดาห์ปัจจุบัน...</p>}
-        {error && <p className="pdata-status pdata-status--warn">{error}</p>}
-
-        {TABS.length === 0 && (
-          <p className="pdata-status pdata-status--warn">คุณยังไม่มีสิทธิ์เข้าถึง Tab ใดในเมนูนี้ กรุณาติดต่อผู้ดูแลระบบ</p>
-        )}
-
-        {TABS.length > 0 && !preparing && (
-          <div className="pdata-tabs">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                className={`pdata-tab ${activeTab === t.key ? 'pdata-tab--active' : ''}`}
-                onClick={() => setActiveTab(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ===== Content ===== */}
@@ -190,6 +210,7 @@ export default function Reports() {
             reportLabel={currentReport ? `${projects.find((p) => String(p.id) === String(projectId))?.project_code}_report${currentReport.report_no}` : 'report'}
             project={projects.find((p) => String(p.id) === String(projectId))}
             report={currentReport}
+            printBarHidden={showCollapseToggle && headerCollapsed}
           />
         )}
       </div>
