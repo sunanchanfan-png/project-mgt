@@ -7,7 +7,6 @@ import client from '../../api/client';
 import SCurveChart from '../ProjectManagement/SCurveChart';
 
 const CATEGORY_TAB_MAP = {
-  quality: 'quality',
   safety: 'safety',
   problems: 'problems',
   'additional-work': 'additional_work',
@@ -15,11 +14,10 @@ const CATEGORY_TAB_MAP = {
 };
 
 const CATEGORY_SECTION_LABELS = {
-  quality: '2. งานตรวจสอบคุณภาพ',
-  safety: '3. ความปลอดภัยและสิ่งแวดล้อม',
-  problems: '5. ปัญหาและอุปสรรค',
-  additional_work: '6. งานเพิ่ม/งานลด',
-  pending: '7. รายการที่รอการตัดสินใจจากผู้ว่าจ้าง',
+  safety: '2. ความปลอดภัยและสิ่งแวดล้อม',
+  problems: '4. ปัญหาและอุปสรรค',
+  additional_work: '5. งานเพิ่ม/งานลด',
+  pending: '6. รายการที่รอการตัดสินใจจากผู้ว่าจ้าง',
 };
 
 const MAX_PHOTOS_PER_PRINT_PAGE = 6; // จำกัดรูปสูงสุด 6 รูปต่อแผ่นตอนพิมพ์ (ทั้งหน้ารูปถ่าย JE และหน้า
@@ -126,23 +124,28 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
 
   useEffect(() => {
     setLoading(true);
+    const categoryKeys = Object.keys(CATEGORY_TAB_MAP);
     Promise.all([
       client.get(`/reports/${reportId}/progress`),
-      ...Object.keys(CATEGORY_TAB_MAP).map((tabKey) =>
+      ...categoryKeys.map((tabKey) =>
         client.get(`/reports/${reportId}/items`, { params: { category: CATEGORY_TAB_MAP[tabKey] } })
       ),
       client.get(`/reports/${reportId}/next-week`),
       client.get(`/reports/${reportId}/photos`),
     ])
-      .then(([progressRes, qualityRes, safetyRes, problemsRes, additionalRes, pendingRes, nextWeekRes, photosRes]) => {
+      .then(([progressRes, ...rest]) => {
         setProgress(progressRes.data);
-        setItemsByCategory({
-          quality: qualityRes.data.items,
-          safety: safetyRes.data.items,
-          problems: problemsRes.data.items,
-          additional_work: additionalRes.data.items,
-          pending: pendingRes.data.items,
+        // ผูกผลลัพธ์แต่ละ category ตามลำดับ categoryKeys จริง (ไม่ hardcode ตำแหน่งตัวแปรอีกต่อไป) กัน
+        // พังตอนมีการเพิ่ม/ลด category ในอนาคต (เช่นตอนตัด "quality" ออกไปรอบนี้) — ตำแหน่งใน rest
+        // จะเลื่อนตาม categoryKeys เสมอ ส่วน nextWeekRes/photosRes อยู่ท้ายสุดเสมอหลัง category ทั้งหมด
+        const categoryResults = rest.slice(0, categoryKeys.length);
+        const nextWeekRes = rest[categoryKeys.length];
+        const photosRes = rest[categoryKeys.length + 1];
+        const itemsByCat = {};
+        categoryKeys.forEach((tabKey, idx) => {
+          itemsByCat[CATEGORY_TAB_MAP[tabKey]] = categoryResults[idx].data.items;
         });
+        setItemsByCategory(itemsByCat);
 
         const nwGroups = [];
         const nwIndex = new Map();
@@ -426,10 +429,11 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
             ))
           )}
 
-          {/* ===== หน้าที่ 5: คุณภาพงาน + ความปลอดภัย — แบ่งแผ่นย่อยอัตโนมัติ ไม่เกิน 6 รูปต่อแผ่นเช่นกัน
-               (หัวข้อ 2/3 เองไม่มีรูป จึงเลื่อนไปต่อกับรายการถัดไปในแผ่นเดียวกันได้เสมอ ไม่กระทบ cap) ===== */}
+          {/* ===== หน้าที่ 5: ความปลอดภัย — แบ่งแผ่นย่อยอัตโนมัติ ไม่เกิน 6 รูปต่อแผ่น (เดิมมี "คุณภาพงาน"
+               รวมอยู่ในหน้านี้ด้วย แต่ตัด Tab คุณภาพงานออกจากทั้งระบบแล้ว เหลือแค่ความปลอดภัยอย่างเดียว) ===== */}
           {packEntriesIntoPrintPages(
-            ['quality', 'safety'].flatMap((cat) => {
+            (() => {
+              const cat = 'safety';
               const header = {
                 key: `${cat}-header`,
                 photoCount: 0,
@@ -461,7 +465,7 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
                   ),
                 })),
               ];
-            }),
+            })(),
             MAX_PHOTOS_PER_PRINT_PAGE
           ).map((page, pageIdx) => (
             <div key={`qs-page-${pageIdx}`} className="report-print-page">
@@ -471,7 +475,7 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
 
           {/* ===== หน้าที่ 6: แผนงานสัปดาห์หน้า ===== */}
           <div className="report-print-page">
-            <h3 className="report-preview__h">4. แผนงานสัปดาห์หน้า / Next week plan</h3>
+            <h3 className="report-preview__h">3. แผนงานสัปดาห์หน้า / Next week plan</h3>
             {nextWeekGroups.length === 0 && <p className="report-preview__empty">-</p>}
             {nextWeekGroups.map((g, gi) => (
               <div key={g.label} className="report-preview__nextweek-group">

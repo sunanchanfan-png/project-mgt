@@ -18,7 +18,6 @@ const MENU_KEY = 'reports';
 
 const ALL_TABS = [
   { key: 'plan-progress', label: 'Plan&Progress' },
-  { key: 'quality', label: 'คุณภาพงาน', category: 'quality' },
   { key: 'safety', label: 'ความปลอดภัย', category: 'safety' },
   { key: 'photos', label: 'รูปถ่าย' },
   { key: 'next-week-plan', label: 'งานสัปดาห์หน้า' },
@@ -111,7 +110,7 @@ export default function Reports() {
   }
 
   const currentReport = reports.find((r) => String(r.id) === String(reportId));
-  const CATEGORY_TABS = ['quality', 'safety', 'problems', 'additional-work', 'pending'];
+  const CATEGORY_TABS = ['safety', 'problems', 'additional-work', 'pending'];
 
   return (
     <Layout title="จัดทำรายงาน">
@@ -192,7 +191,7 @@ export default function Reports() {
             reportId={reportId}
             category={ALL_TABS.find((t) => t.key === activeTab).category}
             tabLabel={ALL_TABS.find((t) => t.key === activeTab).label}
-            allowPhotos={activeTab === 'quality' || activeTab === 'safety'}
+            allowPhotos={activeTab === 'safety'}
           />
         )}
 

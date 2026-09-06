@@ -1,9 +1,9 @@
 // src/pages/Reports/PhotosTab.jsx
-// Tab "รูปถ่าย" — ศูนย์รวมรูปทั้งหมดที่จะไปอยู่ในเล่มรายงานฉบับนี้ แบ่งเป็น 3 คอลัมน์:
+// Tab "รูปถ่าย" — ศูนย์รวมรูปทั้งหมดที่จะไปอยู่ในเล่มรายงานฉบับนี้ แบ่งเป็น 2 คอลัมน์ (เดิม 3 คอลัมน์
+// มี "คุณภาพงาน" ด้วย แต่ตัด Tab คุณภาพงานออกจากทั้งระบบแล้วตามที่ตกลงกันไว้):
 //   1) กิจกรรมงาน (JE) — รูปจาก Menu3 ตอนกรอกความคืบหน้า ต้อง "เลือก" ก่อนถึงจะเข้าเล่มรายงาน (คลิกที่รูป)
 //      เพราะ Menu3 มีรูปสะสมได้หลายวัน/สัปดาห์ ต้องมาเลือกว่าจะเอารูปไหนเข้าเล่ม
-//   2) คุณภาพงาน — รูปที่แนบไว้ที่ Tab คุณภาพงานแล้ว ตอนนี้มีระบบเลือก/ยกเลิกเหมือน JE (คลิกที่รูป)
-//   3) ความปลอดภัย — เหมือนคุณภาพงาน
+//   2) ความปลอดภัย — รูปที่แนบไว้ที่ Tab ความปลอดภัยแล้ว มีระบบเลือก/ยกเลิกเหมือน JE (คลิกที่รูป)
 import { useEffect, useState } from 'react';
 import client from '../../api/client';
 
@@ -11,7 +11,6 @@ const MAX_PHOTOS = 4;
 
 export default function PhotosTab({ reportId }) {
   const [groups, setGroups] = useState(null);
-  const [qualityItems, setQualityItems] = useState(null);
   const [safetyItems, setSafetyItems] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,12 +20,10 @@ export default function PhotosTab({ reportId }) {
     setLoading(true);
     Promise.all([
       client.get(`/reports/${reportId}/photos`),
-      client.get(`/reports/${reportId}/items`, { params: { category: 'quality' } }),
       client.get(`/reports/${reportId}/items`, { params: { category: 'safety' } }),
     ])
-      .then(([photosRes, qualityRes, safetyRes]) => {
+      .then(([photosRes, safetyRes]) => {
         setGroups(photosRes.data.groups);
-        setQualityItems(qualityRes.data.items);
         setSafetyItems(safetyRes.data.items);
         setError('');
       })
@@ -61,7 +58,7 @@ export default function PhotosTab({ reportId }) {
     }
   }
 
-  // คอลัมน์ 2,3 (คุณภาพงาน/ความปลอดภัย) — คลิกรูปเพื่อเลือก/ยกเลิก เข้าเล่มรายงาน
+  // คอลัมน์ 2 (ความปลอดภัย) — คลิกรูปเพื่อเลือก/ยกเลิก เข้าเล่มรายงาน
   async function toggleSelectItemPhoto(category, photo) {
     setBusyPhotoId(photo.id);
     try {
@@ -75,7 +72,7 @@ export default function PhotosTab({ reportId }) {
     }
   }
 
-  // ===== Helper: จัดกลุ่มรูปจาก items (คุณภาพ/ความปลอดภัย) แยกตาม item_id =====
+  // ===== Helper: จัดกลุ่มรูปจาก items (ความปลอดภัย) แยกตาม item_id =====
   function groupPhotosByItem(items) {
     const groups = [];
     (items || []).forEach((item) => {
@@ -105,7 +102,7 @@ export default function PhotosTab({ reportId }) {
       {error && <p className="pdata-status pdata-status--warn">{error}</p>}
 
       {!loading && groups && (
-        <div className="photos-3col">
+        <div className="photos-2col">
           {/* ===== คอลัมน์ 1: กิจกรรมงาน (JE) — คลิกเลือก/ยกเลิก ===== */}
           <div className="photos-3col__col">
             <h4 className="photos-3col__title">กิจกรรมงาน (JE) <span className="photos-3col__hint">คลิกรูปเพื่อเลือก/ยกเลิก</span></h4>
@@ -143,20 +140,17 @@ export default function PhotosTab({ reportId }) {
             })}
           </div>
 
-          {/* ===== คอลัมน์ 2,3: คุณภาพงาน / ความปลอดภัย — มีหัวข้อรายการ (เหมือน JE) ===== */}
-          {[
-            { key: 'quality', label: 'คุณภาพงาน', items: qualityItems },
-            { key: 'safety', label: 'ความปลอดภัย', items: safetyItems },
-          ].map((col) => {
-            const itemGroups = groupPhotosByItem(col.items);
+          {/* ===== คอลัมน์ 2: ความปลอดภัย — มีหัวข้อรายการ (เหมือน JE) ===== */}
+          {(() => {
+            const itemGroups = groupPhotosByItem(safetyItems);
             return (
-              <div className="photos-3col__col" key={col.key}>
+              <div className="photos-3col__col">
                 <h4 className="photos-3col__title">
-                  {col.label}
+                  ความปลอดภัย
                   <span className="photos-3col__hint">คลิกรูปเพื่อเลือก/ยกเลิก</span>
                 </h4>
                 {itemGroups.length === 0 && (
-                  <p className="pdata-status">ยังไม่มีรูป — ไปแนบที่ Tab &quot;{col.label}&quot; ก่อน</p>
+                  <p className="pdata-status">ยังไม่มีรูป — ไปแนบที่ Tab &quot;ความปลอดภัย&quot; ก่อน</p>
                 )}
                 {itemGroups.map((itemGroup) => {
                   const selectedCount = itemGroup.photos.filter((p) => p.selected !== false).length;
@@ -175,7 +169,7 @@ export default function PhotosTab({ reportId }) {
                               key={photo.id}
                               type="button"
                               className={`photos-thumb-btn ${isSelected ? 'photos-thumb-btn--selected' : ''}`}
-                              onClick={() => toggleSelectItemPhoto(col.key, photo)}
+                              onClick={() => toggleSelectItemPhoto('safety', photo)}
                               disabled={isBusy}
                               title={itemGroup.item_content}
                             >
@@ -190,7 +184,7 @@ export default function PhotosTab({ reportId }) {
                 })}
               </div>
             );
-          })}
+          })()}
         </div>
       )}
     </div>

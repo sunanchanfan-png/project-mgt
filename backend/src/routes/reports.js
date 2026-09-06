@@ -18,12 +18,13 @@ const router = express.Router();
 router.use(verifyToken);
 
 const MENU_KEY = 'reports';
-const VALID_CATEGORIES = ['quality', 'safety', 'problems', 'additional_work', 'pending'];
+const VALID_CATEGORIES = ['safety', 'problems', 'additional_work', 'pending'];
 // map query param ?category= ที่ frontend ส่งมา (อิงตาม tab_key ใน menuRegistry) ไปเป็นค่า category จริง
 // ในฐานข้อมูล (ตั้งชื่อสั้นกว่าตอนออกแบบ schema ไปแล้ว) — กันไม่ให้ต้องเปลี่ยน DB column ทีหลังถ้าอยาก
 // เปลี่ยนชื่อ tab
+// หมายเหตุ: ตัด Tab "คุณภาพงาน" (quality) ออกจากทั้งระบบแล้วตามที่ตกลงกันไว้ — ข้อมูลเก่าที่เคยมี
+// category='quality' อยู่ใน DB ยังคงอยู่ (ไม่ได้ลบทิ้ง) แค่ไม่มี endpoint ไหนเข้าถึงได้อีกต่อไปแล้ว
 const CATEGORY_TAB_MAP = {
-  quality: 'quality',
   safety: 'safety',
   problems: 'problems',
   'additional-work': 'additional_work',
@@ -316,7 +317,7 @@ router.put('/:id/remarks', requirePermission('reports', 'plan-progress'), async 
 const MAX_PHOTOS_PER_ITEM = 4; // จำนวนรูปที่ "เลือก" ได้สูงสุดต่อรายการ (แนบเป็น pool ได้ไม่จำกัด แต่เลือกเข้าเล่มได้ไม่เกินนี้ — เหมือน Tab กิจกรรมงาน/JE ทุกประการ ตามที่ยืนยันครั้งสุดท้ายแล้ว)
 
 /**
- * GET /api/reports/:id/items?category=quality|safety|problems|additional-work|pending
+ * GET /api/reports/:id/items?category=safety|problems|additional-work|pending
  * รายการแบบ ลำดับ+รายการ ของ Tab นั้นๆ (ใช้ query param category = ชื่อ tab_key ใน menuRegistry) — พ่วง
  * รูปถ่ายที่แนบไว้มาด้วย (มีใช้จริงแค่ Tab คุณภาพงาน/ความปลอดภัย แต่ query ร่วมกันหมดไม่เสียหายอะไร ถ้าไม่มี
  * รูปก็แค่ได้ array ว่างเปล่า) — พ่วง selected บอกด้วยว่ารูปไหน "เลือกเข้าเล่ม" ไว้แล้วบ้าง
@@ -725,22 +726,21 @@ function fmtPctText(v) {
 }
 
 const CATEGORY_SECTION_LABELS = {
-  quality: '2. งานตรวจสอบคุณภาพ',
-  safety: '3. ความปลอดภัยและสิ่งแวดล้อม',
-  problems: '5. ปัญหาและอุปสรรค',
-  additional_work: '6. งานเพิ่ม/งานลด',
-  pending: '7. รายการที่รอการตัดสินใจจากผู้ว่าจ้าง',
+  safety: '2. ความปลอดภัยและสิ่งแวดล้อม',
+  problems: '4. ปัญหาและอุปสรรค',
+  additional_work: '5. งานเพิ่ม/งานลด',
+  pending: '6. รายการที่รอการตัดสินใจจากผู้ว่าจ้าง',
 };
 
-// ลำดับหัวข้อในเล่มรายงาน ตามที่ตกลงกันไว้ (อ้างอิงจากไฟล์ตัวอย่าง)
+// ลำดับหัวข้อในเล่มรายงาน ตามที่ตกลงกันไว้ (อ้างอิงจากไฟล์ตัวอย่าง) — ตัดหัวข้อ "งานตรวจสอบคุณภาพ" ออก
+// แล้วเลื่อนเลขข้อที่เหลือขึ้นมา 1 ลำดับตามที่ตกลงกันไว้
 const TOC_ITEMS = [
   '1. แผนงานและความคืบหน้างาน',
-  '2. งานตรวจสอบคุณภาพ',
-  '3. ความปลอดภัยและสิ่งแวดล้อม',
-  '4. แผนงานสัปดาห์หน้า',
-  '5. ปัญหาและอุปสรรค',
-  '6. งานเพิ่ม/งานลด',
-  '7. รายการที่รอการตัดสินใจจากผู้ว่าจ้าง',
+  '2. ความปลอดภัยและสิ่งแวดล้อม',
+  '3. แผนงานสัปดาห์หน้า',
+  '4. ปัญหาและอุปสรรค',
+  '5. งานเพิ่ม/งานลด',
+  '6. รายการที่รอการตัดสินใจจากผู้ว่าจ้าง',
 ];
 
 /** สร้างแถวตาราง WBS 1 แถว (ใช้ร่วมกันทั้ง 3 ระดับ ต่างกันแค่ font-weight/indent) */
@@ -797,7 +797,7 @@ router.get('/:id/export', requirePermission('reports', 'compiled'), async (req, 
       );
       itemsByCategory[cat] = r.rows.map((row) => ({ id: row.id, content: row.content }));
     }
-    for (const cat of ['quality', 'safety']) {
+    for (const cat of ['safety']) {
       for (const item of itemsByCategory[cat]) {
         // eslint-disable-next-line no-await-in-loop
         const photosResult = await query(
@@ -937,9 +937,11 @@ router.get('/:id/export', requirePermission('reports', 'compiled'), async (req, 
       }));
     });
 
-    // --- หัวข้อ 2,3: คุณภาพงาน/ความปลอดภัย (มีรูปถ่ายแนบได้ ถ้าไม่แนบก็แค่ไม่มีรูปโชว์ ไม่ใช่ error) ---
-    ['quality', 'safety'].forEach((cat) => {
-      children.push(new Paragraph({ pageBreakBefore: cat === 'quality', heading: HeadingLevel.HEADING_2, children: [new TextRun(CATEGORY_SECTION_LABELS[cat])] }));
+    // --- หัวข้อ 2: ความปลอดภัย (มีรูปถ่ายแนบได้ ถ้าไม่แนบก็แค่ไม่มีรูปโชว์ ไม่ใช่ error) ---
+    // หมายเหตุ: เดิม loop นี้มี "คุณภาพงาน" (quality) รวมอยู่ด้วยเป็นหัวข้อ 2 ก่อนหัวข้อความปลอดภัย 3
+    // แต่ตัด Tab คุณภาพงานออกจากทั้งระบบแล้วตามที่ตกลงกันไว้ เหลือแค่ความปลอดภัยเป็นหัวข้อ 2 อย่างเดียว
+    ['safety'].forEach((cat) => {
+      children.push(new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun(CATEGORY_SECTION_LABELS[cat])] }));
       const list = itemsByCategory[cat];
       if (list.length === 0) {
         children.push(new Paragraph({ text: '-' }));
@@ -970,8 +972,8 @@ router.get('/:id/export', requirePermission('reports', 'compiled'), async (req, 
       }
     });
 
-    // --- หัวข้อ 4: แผนงานสัปดาห์หน้า ---
-    children.push(new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun('4. แผนงานสัปดาห์หน้า / Next week plan')] }));
+    // --- หัวข้อ 3: แผนงานสัปดาห์หน้า ---
+    children.push(new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun('3. แผนงานสัปดาห์หน้า / Next week plan')] }));
     if (nextWeekGroups.length === 0) children.push(new Paragraph({ text: '-' }));
     nextWeekGroups.forEach((g, gi) => {
       children.push(new Paragraph({ spacing: { before: 150 }, children: [new TextRun({ text: `${gi + 1}.) ${g.label}`, bold: true })] }));
@@ -981,7 +983,7 @@ router.get('/:id/export', requirePermission('reports', 'compiled'), async (req, 
       });
     });
 
-    // --- หัวข้อ 5,6,7 ---
+    // --- หัวข้อ 4,5,6 ---
     ['problems', 'additional_work', 'pending'].forEach((cat) => {
       children.push(new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun(CATEGORY_SECTION_LABELS[cat])] }));
       const list = itemsByCategory[cat];

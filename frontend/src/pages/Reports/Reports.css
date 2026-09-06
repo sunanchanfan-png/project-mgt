@@ -557,6 +557,15 @@
   align-items: start;
 }
 
+/* ตัด "คุณภาพงาน" ออกจาก Tab รูปถ่ายแล้ว เหลือ 2 คอลัมน์ (JE + ความปลอดภัย) ใช้ style .photos-3col__col
+   เดิมได้เลย (กรอบ/padding เหมือนกันทุกอย่าง) แค่เปลี่ยนจำนวนคอลัมน์ของ grid ตัวครอบ */
+.photos-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
 .photos-3col__col {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -619,6 +628,7 @@
 
 @media screen and (max-width: 900px) {
   .photos-3col { grid-template-columns: 1fr; }
+  .photos-2col { grid-template-columns: 1fr; }
 }
 
 /* ===== Tab "เล่มรายงาน" — พรีวิวหน้าตารายงานจริงแบบกระดาษ ===== */

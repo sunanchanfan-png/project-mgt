@@ -3,7 +3,8 @@
 // 1) validate ตอน system_mgr กำหนดสิทธิ์ (กันส่ง menu_key/tab_key ที่ไม่มีจริงเข้ามา)
 // 2) ส่งให้ frontend ใช้ render checkbox หน้าอนุมัติ/กำหนดสิทธิ์
 //
-// ลำดับเมนูใน Sidebar: เปิดโครงการ → สร้างข้อมูลโครงการ → การจัดการโครงการ → จัดทำรายงาน → (อนาคต: การจัดการต้นทุน, การวิเคราะห์)
+// เมนูที่ยังไม่เปิดใช้งานจริง (การจัดการต้นทุน) ยังไม่ใส่ไว้ที่นี่ — พอสร้างเมนูนั้นเสร็จจริง
+// ค่อยเพิ่มเข้ามาทีหลัง (เพิ่ม entry ในนี้ที่เดียว ไม่ต้องแก้หลายจุด)
 const MENU_REGISTRY = [
   {
     menu_key: 'open_project',
@@ -31,13 +32,11 @@ const MENU_REGISTRY = [
       { tab_key: 'scurve-group', tab_label: 'Group S-Curve' },
     ],
   },
-  // ===== Menu 5: จัดทำรายงาน (ย้ายมาต่อจาก Menu 3 โดยตรง) =====
   {
     menu_key: 'reports',
     menu_label: 'จัดทำรายงาน',
     tabs: [
       { tab_key: 'plan-progress', tab_label: 'Plan&Progress' },
-      { tab_key: 'quality', tab_label: 'คุณภาพงาน' },
       { tab_key: 'safety', tab_label: 'ความปลอดภัย' },
       { tab_key: 'photos', tab_label: 'รูปถ่าย' },
       { tab_key: 'next-week-plan', tab_label: 'งานสัปดาห์หน้า' },
@@ -47,17 +46,6 @@ const MENU_REGISTRY = [
       { tab_key: 'compiled', tab_label: 'เล่มรายงาน' },
     ],
   },
-  // ===== เมนูที่ยังไม่เปิดใช้งานจริง (เตรียมไว้สำหรับอนาคต) =====
-  // {
-  //   menu_key: 'cost_management',
-  //   menu_label: 'การจัดการต้นทุน',
-  //   tabs: [],
-  // },
-  // {
-  //   menu_key: 'analysis',
-  //   menu_label: 'การวิเคราะห์',
-  //   tabs: [],
-  // },
 ];
 
 // เซตของ "menu_key|tab_key" ที่ถูกต้องทั้งหมด (ใช้ validate เร็วๆ ตอนรับค่าจาก request)
