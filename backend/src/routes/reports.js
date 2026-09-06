@@ -961,7 +961,8 @@ router.get('/:id/export', requirePermission('reports', 'compiled'), async (req, 
         children.push(new Paragraph({ text: '-' }));
       } else {
         list.forEach((item, idx) => {
-          children.push(new Paragraph({ text: `${idx + 1}.) ${item.content}` }));
+          // ถอยห่างจากขอบ 22px (≈ 440 twips ที่ 20 twips/px) เหมือนข้อ 4,5,6 ให้ตรงกับ Tab9 preview บนจอ
+          children.push(new Paragraph({ text: `${idx + 1}.) ${item.content}`, indent: { left: 440 } }));
           if (item.photoBuffers && item.photoBuffers.length > 0) {
             const imgCells = item.photoBuffers.map((img) => new TableCell({
               children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ data: img.buffer, type: img.type, transformation: { width: 180, height: 135 } })] })],

@@ -454,7 +454,7 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
                   photoCount: (it.photos || []).length,
                   render: () => (
                     <div key={`${cat}-${it.id}`}>
-                      <p className="report-preview__list" style={{ marginBottom: 4 }}>{idx + 1}.) {it.content}</p>
+                      <p className="report-preview__list report-preview__list--numbered" style={{ marginBottom: 4 }}>{idx + 1}.) {it.content}</p>
                       {it.photos && it.photos.length > 0 && (
                         <div className="report-preview__photo-grid">
                           {it.photos.map((p) => (
