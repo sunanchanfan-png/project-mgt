@@ -738,6 +738,19 @@
   font-weight: 700;
 }
 
+/* ข้อ 3,4,5,6: sub item ใส่เลขลำดับ "1.) xxx" อัตโนมัติในตัวข้อความเอง (ไม่ใช้ ::before เหมือน
+   .report-preview__list--check เพราะเลขต้องขยับตามลำดับจริง 1,2,3... ไม่ใช่ bullet คงที่ตัวเดียวกันทุกแถว)
+   — ถอยห่างจากขอบ 22px ให้ตรงกับ .report-preview__nextweek-title (หัวข้อกลุ่มในข้อ 3) พอดี */
+.report-preview__list--numbered {
+  list-style: none;
+  padding-left: 22px;
+  margin: 0;
+}
+.report-preview__list--numbered li {
+  padding-left: 0;
+  margin-left: 0;
+}
+
 .report-preview__item-photo-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

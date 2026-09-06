@@ -400,12 +400,13 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
             {renderOverallTable()}
           </div>
 
-          {/* ===== หน้าที่ 4: รูปถ่ายความคืบหน้า (JE) — แบ่งแผ่นย่อยอัตโนมัติ ไม่เกิน 6 รูปต่อแผ่น ===== */}
-          {photoGroups.length === 0 ? (
-            <div className="report-print-page">
-              <p className="report-preview__empty">ไม่มีรูปถ่ายที่เลือกไว้ในรายงานฉบับนี้</p>
-            </div>
-          ) : (
+          {/* ===== หน้าที่ 4: รูปถ่ายความคืบหน้า (JE) — แบ่งแผ่นย่อยอัตโนมัติ ไม่เกิน 6 รูปต่อแผ่น
+               เงื่อนไข: JE มีรูปแนบ (เลือกไว้แล้ว) เท่านั้นถึงจะแสดงหน้านี้ — งานช่วงออกแบบ/เอกสารมักไม่มี
+               รูปถ่ายหน้างานเลย จึง "เลื่อนหน้านี้ออกไปทั้งหน้า" แทนที่จะโชว์หน้าเปล่าๆ ว่า "ไม่มีรูปถ่าย"
+               (ต่างจากเดิมที่ยังคงสร้างหน้าเปล่าไว้เสมอ 7 หน้าตายตัว) ผลคือถ้า JE ไม่มีรูปเลย หน้า "ความ
+               ปลอดภัย" (เดิมหน้าที่ 5) จะขยับขึ้นมาเป็นหน้าถัดจากตารางสรุปทันที ไม่มีหน้าว่างคั่นกลาง —
+               ถ้า JE มีรูปแม้แต่กลุ่มเดียว logic เดิม (จำกัด 6 รูปต่อแผ่น) ยังทำงานตามปกติทุกอย่าง ===== */}
+          {photoGroups.length > 0 && (
             packEntriesIntoPrintPages(
               photoGroups.map((g) => ({
                 key: g.wbs_level3_id,
@@ -480,10 +481,10 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
             {nextWeekGroups.map((g, gi) => (
               <div key={g.label} className="report-preview__nextweek-group">
                 <p className="report-preview__nextweek-title">{gi + 1}.) {g.label}</p>
-                <ul className="report-preview__list report-preview__list--check">
-                  {g.items.map((item) => (
+                <ul className="report-preview__list report-preview__list--numbered">
+                  {g.items.map((item, itemIdx) => (
                     <li key={item.id}>
-                      {item.content}
+                      {itemIdx + 1}.) {item.content}
                       {item.target_percent !== null && item.target_percent !== undefined && <strong> {item.target_percent}%</strong>}
                     </li>
                   ))}
@@ -492,14 +493,19 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
             ))}
           </div>
 
-          {/* ===== หน้าที่ 7: ปัญหาอุปสรรค + งานเพิ่มลด + เรื่องที่ค้าง ===== */}
+          {/* ===== หน้าที่ 7: ปัญหาอุปสรรค + งานเพิ่มลด + เรื่องที่ค้าง — ใส่เลขลำดับ "1.) xxx" ต่อจากที่แก้
+               ข้อ 3 (แผนงานสัปดาห์หน้า) ไปแล้ว ตามที่ตกลงกันไว้ (รวมข้อ 6 ด้วย) ===== */}
           <div className="report-print-page report-print-page--last">
             {['problems', 'additional_work', 'pending'].map((cat) => (
               <div key={cat}>
                 <h3 className="report-preview__h">{CATEGORY_SECTION_LABELS[cat]}</h3>
                 {itemsByCategory[cat].length === 0
                   ? <p className="report-preview__empty">-</p>
-                  : <ul className="report-preview__list">{itemsByCategory[cat].map((it) => <li key={it.id}>{it.content}</li>)}</ul>}
+                  : (
+                    <ul className="report-preview__list report-preview__list--numbered">
+                      {itemsByCategory[cat].map((it, idx) => <li key={it.id}>{idx + 1}.) {it.content}</li>)}
+                    </ul>
+                  )}
               </div>
             ))}
           </div>

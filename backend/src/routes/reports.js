@@ -991,18 +991,20 @@ router.get('/:id/export', requirePermission('reports', 'compiled'), async (req, 
     if (nextWeekGroups.length === 0) children.push(new Paragraph({ text: '-' }));
     nextWeekGroups.forEach((g, gi) => {
       children.push(new Paragraph({ spacing: { before: 150 }, children: [new TextRun({ text: `${gi + 1}.) ${g.label}`, bold: true })] }));
-      g.items.forEach((item) => {
+      g.items.forEach((item, itemIdx) => {
         const text = item.target_percent !== null && item.target_percent !== undefined ? `${item.content} ${item.target_percent}%` : item.content;
-        children.push(new Paragraph({ text: `✓ ${text}`, indent: { left: 400 } }));
+        // ใส่เลขลำดับ "1.) xxx" แทนเครื่องหมาย ✓ เดิม ถอยห่างจากขอบ 22px (≈ 440 twips ที่ 20 twips/px)
+        // ให้ตรงกับระยะเดียวกับหัวข้อกลุ่ม ({gi+1}.) {g.label} ด้านบน) ตามที่ตกลงกันไว้
+        children.push(new Paragraph({ text: `${itemIdx + 1}.) ${text}`, indent: { left: 440 } }));
       });
     });
 
-    // --- หัวข้อ 4,5,6 ---
+    // --- หัวข้อ 4,5,6 — ใส่เลขลำดับ "1.) xxx" ถอย 22px เหมือนข้อ 3 ด้านบน (รวมข้อ 6 ด้วยตามที่ตกลงกันไว้) ---
     ['problems', 'additional_work', 'pending'].forEach((cat) => {
       children.push(new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun(CATEGORY_SECTION_LABELS[cat])] }));
       const list = itemsByCategory[cat];
       if (list.length === 0) children.push(new Paragraph({ text: '-' }));
-      else list.forEach((item) => children.push(new Paragraph({ text: item.content, bullet: { level: 0 } })));
+      else list.forEach((item, idx) => children.push(new Paragraph({ text: `${idx + 1}.) ${item.content}`, indent: { left: 440 } })));
     });
 
     const doc = new Document({ sections: [{ children }] });
