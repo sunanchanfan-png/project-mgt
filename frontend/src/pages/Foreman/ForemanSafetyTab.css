@@ -1,0 +1,182 @@
+/* src/pages/Foreman/ForemanSafetyTab.css */
+.fsafety {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.fsafety__add-btn {
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.fsafety__status {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+  padding: 24px 0;
+}
+.fsafety__status--warn { color: var(--danger); }
+
+.fsafety__card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  min-height: 64px;
+}
+.fsafety__card:active {
+  background: var(--accent-soft);
+}
+
+.fsafety__card-text { flex: 1; min-width: 0; }
+
+.fsafety__card-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  /* ตัดข้อความยาวให้แสดงแค่ 2 บรรทัดในหน้ารายการ (เต็มดูได้ตอนกดเข้าไปแก้ไข) */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.fsafety__card-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.fsafety__card-chevron {
+  font-size: 24px;
+  color: var(--ink-soft);
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.fsafety-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.fsafety-entry__back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.fsafety-entry__title {
+  font-size: 20px;
+  margin: 0 0 20px;
+}
+
+.fsafety-entry__label {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+}
+
+.fsafety-entry__textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: var(--font-body);
+  background: var(--surface);
+  color: var(--ink);
+  resize: vertical;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+}
+
+.fsafety-entry__photo-btn {
+  display: block;
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+.fsafety-entry__photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.fsafety-entry__photo-chip {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fsafety-entry__photo-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fsafety-entry__photo-uploading { font-size: 20px; }
+
+.fsafety-entry__photo-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+}
+
+.fsafety-entry__save {
+  margin-top: auto;
+  width: 100%;
+  padding: 18px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+}
+.fsafety-entry__save:disabled { opacity: 0.6; }
+.fsafety-entry__save:not(:disabled):active { background: var(--accent-hover); }

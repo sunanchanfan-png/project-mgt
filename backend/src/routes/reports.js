@@ -89,8 +89,22 @@ async function ensureReportForWeek(projectId, weekStart, weekEnd, weekNumber, us
  * หา/สร้างรายงานของ "สัปดาห์ปัจจุบัน" ของโครงการนี้อัตโนมัติ (ไม่ต้องกดปุ่มสร้างเองแล้ว) — คำนวณเลข
  * สัปดาห์จากวันเริ่มสัญญาของโครงการ (contract_start) เทียบกับวันนี้จริง (นาฬิกาเซิร์ฟเวอร์)
  */
-router.get('/current', requirePermission('reports', 'plan-progress'), async (req, res) => {
+router.get('/current', async (req, res) => {
   try {
+    // เช็คสิทธิ์แบบ "มี Tab ไหนก็ได้ใน Menu 5 (reports)" แทนที่จะผูกตายตัวกับ Tab "plan-progress" อย่างเดียว
+    // (เดิมเป็นแบบนั้นเพราะหน้าคอมพิวเตอร์ (Reports.jsx) เข้า Tab นี้เป็น default เสมอ) — แต่ ForemanApp
+    // (มือถือ) เรียก endpoint นี้เหมือนกันเพื่อหา reportId ก่อนไปเปิด Tab "ความปลอดภัย" โดยตรง ซึ่ง foreman
+    // มักไม่ได้รับสิทธิ์ Tab "plan-progress" เลย (ได้แค่ safety) ทำให้โดนบล็อก 403 ทั้งที่ควรผ่านได้
+    if (req.user.role !== 'admin' && req.user.role !== 'system_mgr') {
+      const permResult = await query(
+        'SELECT 1 FROM project_mgt.user_permissions WHERE user_id = $1 AND menu_key = $2 LIMIT 1',
+        [req.user.id, MENU_KEY]
+      );
+      if (permResult.rows.length === 0) {
+        return res.status(403).json({ error: 'คุณไม่มีสิทธิ์เข้าถึงส่วนนี้ กรุณาติดต่อผู้ดูแลระบบ' });
+      }
+    }
+
     const { project_id } = req.query;
     if (!project_id) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
 
@@ -314,7 +328,7 @@ router.put('/:id/remarks', requirePermission('reports', 'plan-progress'), async 
   }
 });
 
-const MAX_PHOTOS_PER_ITEM = 4; // จำนวนรูปที่ "เลือก" ได้สูงสุดต่อรายการ (แนบเป็น pool ได้ไม่จำกัด แต่เลือกเข้าเล่มได้ไม่เกินนี้ — เหมือน Tab กิจกรรมงาน/JE ทุกประการ ตามที่ยืนยันครั้งสุดท้ายแล้ว)
+const MAX_PHOTOS_PER_ITEM = 6; // จำนวนรูปที่ "เลือก" ได้สูงสุดต่อรายการ (แนบเป็น pool ได้ไม่จำกัด แต่เลือกเข้าเล่มได้ไม่เกินนี้ — เหมือน Tab กิจกรรมงาน/JE ทุกประการ)
 
 /**
  * GET /api/reports/:id/items?category=safety|problems|additional-work|pending

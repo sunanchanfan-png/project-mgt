@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react';
 import client from '../../api/client';
 
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 6;
 
 export default function ReportItemsTab({ reportId, category, tabLabel, allowPhotos = false }) {
   const [items, setItems] = useState(null);

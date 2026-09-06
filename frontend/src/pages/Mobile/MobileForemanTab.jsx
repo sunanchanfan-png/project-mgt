@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import client from '../../api/client';
 import './MobileForemanTab.css';
 
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 6;
 
 function fmtPct(v) {
   return `${Number(v).toFixed(0)}%`;

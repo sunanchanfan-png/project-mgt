@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import client from '../../api/client';
 
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 6;
 
 export default function PhotosTab({ reportId }) {
   const [groups, setGroups] = useState(null);

@@ -372,7 +372,7 @@ router.post('/entries', requireRole('admin', 'pm', 'foreman'), async (req, res) 
       entry = insertResult.rows[0];
     }
 
-    const MAX_PHOTOS = 4; // จำกัดสูงสุด 4 รูปต่อการบันทึกความคืบหน้า 1 ครั้ง — เช็คซ้ำฝั่ง backend
+    const MAX_PHOTOS = 6; // จำกัดสูงสุด 6 รูปต่อการบันทึกความคืบหน้า 1 ครั้ง — เช็คซ้ำฝั่ง backend
     // ด้วย (ไม่พึ่งแค่ validation ฝั่ง frontend เพราะ client แก้ payload เองได้เสมอ)
     const photos = [];
     if (Array.isArray(photo_urls)) {
