@@ -30,10 +30,12 @@ export default function ForemanApp() {
 
   useEffect(() => {
     // foreman เห็นเฉพาะโครงการที่ "เปิดอยู่" เหมือนเมนูอื่นๆ ในระบบ
-    client.get('/projects', { params: { status: 'on' } }).then((res) => {
-      setProjects(res.data.projects);
-      if (res.data.projects.length > 0) setProjectId(res.data.projects[0].id);
-    });
+    client.get('/projects', { params: { status: 'on' } })
+      .then((res) => {
+        setProjects(res.data.projects);
+        if (res.data.projects.length > 0) setProjectId(res.data.projects[0].id);
+      })
+      .catch((err) => setReportError(err.response?.data?.error || 'ดึงรายชื่อโครงการไม่สำเร็จ'));
   }, []);
 
   useEffect(() => {
