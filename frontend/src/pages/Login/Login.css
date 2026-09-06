@@ -72,6 +72,27 @@
   border-color: var(--accent);
 }
 
+/* ===== ช่องรหัสผ่าน + ปุ่มไอคอนตา (ซ่อน/แสดงรหัสผ่าน) ===== */
+.field__password-wrap {
+  position: relative;
+}
+.field__password-wrap input {
+  padding-right: 40px; /* กันตัวอักษรชนกับปุ่มไอคอนตาที่ลอยอยู่ทางขวา */
+}
+.field__password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+
 .btn-primary {
   width: 100%;
   padding: 12px;
