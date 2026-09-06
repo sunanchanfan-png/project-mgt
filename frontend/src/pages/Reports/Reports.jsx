@@ -116,7 +116,7 @@ export default function Reports() {
   return (
     <Layout title="จัดทำรายงาน">
       {/* ===== Sticky Header: Toolbar + Tabs ===== */}
-      <div className="reports-sticky-header">
+      <div className={showCollapseToggle && headerCollapsed ? 'reports-sticky-header reports-sticky-header--collapsed' : 'reports-sticky-header'}>
         {/* ลูกศรเล็กๆ ซ่อน/โชว์ ส่วน filter+tabs+print — โชว์เฉพาะตอนอยู่ Tab "เล่มรายงาน" บนมือถือเท่านั้น
             (Tab อื่นๆ หรือเปิดผ่าน PC ไม่มีปุ่มนี้ ทุกอย่างแสดงตามปกติเหมือนเดิมทุกจุด) — ไม่ทำเป็นแถบปุ่ม
             เต็มความกว้างแบบเดิมแล้ว เอาแค่ลูกศรเล็กๆ กึ่งกลางแทน ให้ดูกลืนไปกับ title bar */}
