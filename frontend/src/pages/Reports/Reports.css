@@ -899,19 +899,20 @@
      แท็บ) ทำให้เห็นเป็นเส้น 2 เส้นติดกัน เหลือแค่เส้นเดียวของ .pdata-tabs ก็พอ */
 }
 
-/* ===== ปุ่มซ่อน/โชว์ filter+tabs (เฉพาะ Tab "เล่มรายงาน" บนมือถือ) ===== */
-.reports-header-collapse-toggle {
-  display: block;
+/* ===== ลูกศรเล็กๆ ซ่อน/โชว์ filter+tabs (เฉพาะ Tab "เล่มรายงาน" บนมือถือ) — ไม่ใช่แถบปุ่มเต็มความกว้าง
+   แบบเดิมแล้ว เอาแค่ไอคอนลูกศรกึ่งกลาง ดูกลืนไปกับ title bar ด้านบน ตามที่ขอ */
+.reports-header-collapse-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  text-align: center;
-  padding: 8px;
-  margin-bottom: 8px;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--accent);
-  font-weight: 600;
+  padding: 2px 0 6px;
+  margin: 0;
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-soft);
 }
 
 .reports-header-collapsible {
