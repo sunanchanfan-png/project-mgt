@@ -28,8 +28,12 @@ function formatMoney(v) {
 }
 
 export default function ProjectManagement() {
-  const { canAccessTab } = useAuth();
-  const isMobile = useIsMobile();
+  const { canAccessTab, user } = useAuth();
+  const isNarrowScreen = useIsMobile();
+  // เห็นหน้าจอมือถือ (ทีละกิจกรรมงาน) เฉพาะ role foreman เท่านั้น — role อื่น (admin, pm, system_mgr ฯลฯ)
+  // ต้องเห็นตาราง Plan&Progress แบบ PC เสมอไม่ว่าจอจะแคบแค่ไหน (ตามที่ตกลงกันไว้ — role พวกนี้ต้องดูภาพรวม
+  // ทั้งต้นไม้ WBS ได้ ไม่ใช่กรอกงานทีละอย่างแบบ foreman)
+  const showMobileFlow = isNarrowScreen && user?.role === 'foreman';
   // เห็นเฉพาะ Tab ที่ system_mgr ให้สิทธิ์ไว้เท่านั้น (ถ้ายังไม่มีเลย จะไม่เห็น Tab ไหนเลย — โชว์ข้อความ
   // แจ้งแทน กันสับสนว่าหน้าเสีย)
   const TABS = ALL_TABS.filter((t) => canAccessTab(MENU_KEY, t.key));
@@ -104,12 +108,12 @@ export default function ProjectManagement() {
       )}
 
       {projectId && activeTab === 'this-week' && (
-        isMobile
+        showMobileFlow
           ? <MobileForemanTab projectId={projectId} week="this" />
           : <WeeklyProgressTab projectId={projectId} week="this" editable />
       )}
       {projectId && activeTab === 'next-week' && (
-        isMobile
+        showMobileFlow
           ? <MobileForemanTab projectId={projectId} week="next" />
           : <WeeklyProgressTab projectId={projectId} week="next" editable />
       )}
