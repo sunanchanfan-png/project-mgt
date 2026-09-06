@@ -986,16 +986,16 @@ router.get('/:id/export', requirePermission('reports', 'compiled'), async (req, 
       }
     });
 
-    // --- หัวข้อ 3: แผนงานสัปดาห์หน้า ---
+    // --- หัวข้อ 3: แผนงานสัปดาห์หน้า — กรณีพิเศษ (ต่างจากข้อ 2,4,5,6) เพราะบังคับเลือกชื่องาน (WBS
+    // Level1) ก่อนเสมอถึงจะเพิ่มรายการได้ จึงมี 2 ระดับจริง: Level1 = ชื่องานที่เลือก (1.) label ถอย 22px)
+    // ส่วน Level2 = รายการย่อยที่พิมพ์เอง ใช้ bullet ธรรมดา (ไม่ใช่เลขลำดับ) ถอย 44px ตาม logic เดิม ---
     children.push(new Paragraph({ pageBreakBefore: true, heading: HeadingLevel.HEADING_2, children: [new TextRun('3. แผนงานสัปดาห์หน้า / Next week plan')] }));
     if (nextWeekGroups.length === 0) children.push(new Paragraph({ text: '-' }));
     nextWeekGroups.forEach((g, gi) => {
       children.push(new Paragraph({ spacing: { before: 150 }, children: [new TextRun({ text: `${gi + 1}.) ${g.label}`, bold: true })] }));
-      g.items.forEach((item, itemIdx) => {
+      g.items.forEach((item) => {
         const text = item.target_percent !== null && item.target_percent !== undefined ? `${item.content} ${item.target_percent}%` : item.content;
-        // ใส่เลขลำดับ "1.) xxx" แทนเครื่องหมาย ✓ เดิม ถอยห่างจากขอบ 22px (≈ 440 twips ที่ 20 twips/px)
-        // ให้ตรงกับระยะเดียวกับหัวข้อกลุ่ม ({gi+1}.) {g.label} ด้านบน) ตามที่ตกลงกันไว้
-        children.push(new Paragraph({ text: `${itemIdx + 1}.) ${text}`, indent: { left: 440 } }));
+        children.push(new Paragraph({ text: `✓ ${text}`, indent: { left: 400 } }));
       });
     });
 

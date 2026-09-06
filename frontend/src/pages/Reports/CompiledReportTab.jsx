@@ -474,17 +474,20 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
             </div>
           ))}
 
-          {/* ===== หน้าที่ 6: แผนงานสัปดาห์หน้า ===== */}
+          {/* ===== หน้าที่ 6: แผนงานสัปดาห์หน้า — เป็นกรณีพิเศษ (ต่างจากข้อ 2,4,5,6 ที่ปรับเป็น sub level1
+               ตรงๆ) เพราะข้อนี้บังคับเลือกชื่องาน (WBS Level1) ก่อนเสมอถึงจะเพิ่มรายการได้ จึงมี 2 ระดับจริง:
+               Level1 = ชื่อกลุ่มงานที่เลือก (1.) JG-1 - ออกแบบ, ถอย 22px) แล้วข้างใต้เป็น Level2 = รายการ
+               ย่อยที่พิมพ์เอง (bullet ธรรมดา ถอย 44px ตาม logic เดิม ไม่ใช่เลขลำดับ) ===== */}
           <div className="report-print-page">
             <h3 className="report-preview__h">3. แผนงานสัปดาห์หน้า / Next week plan</h3>
             {nextWeekGroups.length === 0 && <p className="report-preview__empty">-</p>}
             {nextWeekGroups.map((g, gi) => (
               <div key={g.label} className="report-preview__nextweek-group">
                 <p className="report-preview__nextweek-title">{gi + 1}.) {g.label}</p>
-                <ul className="report-preview__list report-preview__list--numbered">
-                  {g.items.map((item, itemIdx) => (
+                <ul className="report-preview__list report-preview__list--check">
+                  {g.items.map((item) => (
                     <li key={item.id}>
-                      {itemIdx + 1}.) {item.content}
+                      {item.content}
                       {item.target_percent !== null && item.target_percent !== undefined && <strong> {item.target_percent}%</strong>}
                     </li>
                   ))}
