@@ -960,8 +960,8 @@ router.get('/:id/export', requirePermission('reports', 'compiled'), async (req, 
       if (list.length === 0) {
         children.push(new Paragraph({ text: '-' }));
       } else {
-        list.forEach((item) => {
-          children.push(new Paragraph({ text: item.content, bullet: { level: 0 } }));
+        list.forEach((item, idx) => {
+          children.push(new Paragraph({ text: `${idx + 1}.) ${item.content}` }));
           if (item.photoBuffers && item.photoBuffers.length > 0) {
             const imgCells = item.photoBuffers.map((img) => new TableCell({
               children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ data: img.buffer, type: img.type, transformation: { width: 180, height: 135 } })] })],

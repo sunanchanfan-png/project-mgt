@@ -58,10 +58,10 @@ export default function ForemanSafetyTab({ reportId }) {
       {!loading && items && items.length === 0 && (
         <p className="fsafety__status">ยังไม่มีรายการความปลอดภัยในสัปดาห์นี้ — กด &quot;+ Safety&quot; เพื่อเพิ่ม</p>
       )}
-      {items && items.map((item) => (
+      {items && items.map((item, idx) => (
         <button key={item.id} type="button" className="fsafety__card" onClick={() => setOpenItem(item)}>
           <div className="fsafety__card-text">
-            <p className="fsafety__card-title">{item.content}</p>
+            <p className="fsafety__card-title">{idx + 1}.) {item.content}</p>
             <p className="fsafety__card-sub">🖼 {(item.photos || []).length} รูป</p>
           </div>
           <span className="fsafety__card-chevron" aria-hidden="true">›</span>
