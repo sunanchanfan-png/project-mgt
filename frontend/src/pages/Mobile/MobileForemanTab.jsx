@@ -94,7 +94,11 @@ export default function MobileForemanTab({ projectId, week }) {
 // ===== หน้าจอ 2: กรอกงานเดียวเต็มจอ =====
 function MobileActivityEntry({ activity, onBack, onSaved }) {
   const [percent, setPercent] = useState(Math.round(activity.actual_percent));
-  const [photos, setPhotos] = useState([]); // [{ tempId, url, uploading }]
+  // โหลดรูปที่เคยบันทึกไว้แล้วจริงจาก activity.photos มาใส่ก่อนเสมอ (เหมือนที่ WeeklyProgressTab.jsx
+  // ฝั่ง PC ทำอยู่แล้ว) — ก่อนหน้านี้เริ่มจาก [] เปล่าๆ เสมอ ทำให้ถ้าผู้ใช้แก้แค่ % แล้วกดบันทึกโดยไม่แนบรูป
+  // ใหม่ ระบบจะส่ง photo_urls: [] ไปที่ backend ซึ่ง backend ลบรูปเก่าทิ้งก่อนเสมอ (ดู POST /progress/
+  // entries) ผลคือรูปที่เคยแนบไว้ 4 รูปหายหมดโดยไม่ตั้งใจ — แก้โดยพรีโหลดรูปเดิมมาเป็นค่าเริ่มต้นแทน
+  const [photos, setPhotos] = useState(() => (activity.photos || []).map((p) => ({ tempId: `existing-${p.id}`, url: p.url, uploading: false })));
   const [saving, setSaving] = useState(false);
 
   async function handleAddPhoto(fileList) {
