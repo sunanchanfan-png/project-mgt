@@ -1022,3 +1022,7 @@ router.get('/:id/export', requirePermission('reports', 'compiled'), async (req, 
 });
 
 module.exports = router;
+// แนบฟังก์ชันนี้ไว้เป็น property ของ router (ยังเป็น middleware function ใช้กับ app.use() ได้ตามปกติทุก
+// ประการ) เพื่อให้ routes/client.js เรียกใช้ซ้ำได้ตรงๆ โดยไม่ต้อง copy สูตรคำนวณ Plan&Progress ซ้ำอีกที
+// (กันสูตรเพี้ยนกันระหว่างจุดในอนาคต — ดูคอมเมนต์ที่ routes/client.js อธิบายเหตุผลไว้ด้วย)
+module.exports.getReportProgressData = getReportProgressData;

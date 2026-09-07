@@ -20,9 +20,10 @@ export default function Login() {
     setLoading(true);
     try {
       const userData = await login(username, password);
-      // role "foreman" ให้เข้าหน้ากรอกงานภาคสนามโดยตรง (ไม่เห็นเมนูอื่นในระบบเลย) ส่วน role อื่นเข้า
-      // หน้า dashboard เต็มรูปแบบตามปกติ
-      navigate(userData.role === 'foreman' ? '/foreman' : '/dashboard');
+      // role "foreman" ให้เข้าหน้ากรอกงานภาคสนามโดยตรง, role "client" (ลูกค้า) ให้เข้าหน้าดูความคืบหน้า
+      // งานโดยตรง (ไม่เห็นเมนูอื่นในระบบเลยทั้งคู่) ส่วน role อื่นเข้าหน้า dashboard เต็มรูปแบบตามปกติ
+      const roleRedirect = { foreman: '/foreman', client: '/client' };
+      navigate(roleRedirect[userData.role] || '/dashboard');
     } catch (err) {
       const msg = err.response?.data?.error || 'เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้ง';
       setError(msg);

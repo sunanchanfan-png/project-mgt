@@ -119,7 +119,7 @@ router.post('/users/:id/approve', requireRole('system_mgr', 'admin'), async (req
     const { id } = req.params;
     const { role, permissions } = req.body;
 
-    const validRoles = ['admin', 'pm', 'foreman', 'viewer', 'system_mgr'];
+    const validRoles = ['admin', 'pm', 'foreman', 'viewer', 'system_mgr', 'client'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ error: `role ต้องเป็นหนึ่งใน: ${validRoles.join(', ')}` });
     }
@@ -240,7 +240,7 @@ router.put('/users/:id', requireRole('system_mgr', 'admin'), async (req, res) =>
     const { id } = req.params;
     const { role, permissions } = req.body;
 
-    const validRoles = ['admin', 'pm', 'foreman', 'viewer', 'system_mgr'];
+    const validRoles = ['admin', 'pm', 'foreman', 'viewer', 'system_mgr', 'client'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ error: `role ต้องเป็นหนึ่งใน: ${validRoles.join(', ')}` });
     }
@@ -267,6 +267,66 @@ router.put('/users/:id', requireRole('system_mgr', 'admin'), async (req, res) =>
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'บันทึกสิทธิ์ไม่สำเร็จ' });
+  }
+});
+
+/**
+ * GET /api/permissions/users/:id/client-projects
+ * รายชื่อ project_id ที่ client คนนี้ (role='client') ถูกผูกให้เห็นได้อยู่ตอนนี้ — ใช้ prefill checkbox
+ * รายการโครงการตอนเปิดหน้าแก้ไขสิทธิ์ของ client คนนั้น
+ */
+router.get('/users/:id/client-projects', requireRole('system_mgr', 'admin'), async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT project_id FROM project_mgt.client_project_access WHERE user_id = $1',
+      [req.params.id]
+    );
+    res.json({ project_ids: result.rows.map((r) => r.project_id) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'ดึงรายการโครงการไม่สำเร็จ' });
+  }
+});
+
+/**
+ * PUT /api/permissions/users/:id/client-projects
+ * body: { project_ids: [1, 2, 3] }
+ * แทนที่รายการโครงการที่ client คนนี้เห็นได้ทั้งหมดด้วยรายการใหม่ (transaction เดียว กันข้อมูลค้าง
+ * ครึ่งๆ กลางๆ ถ้า error กลางทาง เหมือน setRoleAndPermissions ด้านบน) ส่ง project_ids ว่าง = ถอดสิทธิ์
+ * ดูโครงการออกทั้งหมด (ไม่กระทบ role/tab permission ของ user คนนั้น ซึ่งจัดการแยกกันคนละ endpoint)
+ */
+router.put('/users/:id/client-projects', requireRole('system_mgr', 'admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { project_ids: projectIds } = req.body;
+    const ids = Array.isArray(projectIds) ? projectIds : [];
+
+    const userCheck = await query('SELECT id FROM project_mgt.users WHERE id = $1', [id]);
+    if (userCheck.rows.length === 0) return res.status(404).json({ error: 'ไม่พบผู้ใช้นี้' });
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM project_mgt.client_project_access WHERE user_id = $1', [id]);
+      for (const projectId of ids) {
+        // eslint-disable-next-line no-await-in-loop
+        await client.query(
+          `INSERT INTO project_mgt.client_project_access (user_id, project_id) VALUES ($1, $2)
+           ON CONFLICT (user_id, project_id) DO NOTHING`,
+          [id, projectId]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+    res.json({ message: 'บันทึกโครงการที่ลูกค้าเห็นได้เรียบร้อยแล้ว' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'บันทึกไม่สำเร็จ' });
   }
 });
 

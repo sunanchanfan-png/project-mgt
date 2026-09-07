@@ -46,6 +46,16 @@ const MENU_REGISTRY = [
       { tab_key: 'compiled', tab_label: 'เล่มรายงาน' },
     ],
   },
+  {
+    menu_key: 'client-app',
+    menu_label: 'แอปลูกค้า (ดูความคืบหน้างาน)',
+    tabs: [
+      { tab_key: 'this-week', tab_label: 'งานสัปดาห์นี้' },
+      { tab_key: 'next-week', tab_label: 'งานสัปดาห์หน้า' },
+      { tab_key: 'scurve', tab_label: 'S-Curve' },
+      { tab_key: 'full-report', tab_label: 'เล่มรายงาน' },
+    ],
+  },
 ];
 
 // เซตของ "menu_key|tab_key" ที่ถูกต้องทั้งหมด (ใช้ validate เร็วๆ ตอนรับค่าจาก request)

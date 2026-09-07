@@ -10,6 +10,7 @@ import ProjectManagement from './pages/ProjectManagement/ProjectManagement';
 import PermissionApproval from './pages/PermissionApproval/PermissionApproval';
 import Reports from './pages/Reports/Reports';
 import ForemanApp from './pages/Foreman/ForemanApp';
+import ClientApp from './pages/Client/ClientApp';
 
 export default function App() {
   return (
@@ -23,6 +24,14 @@ export default function App() {
             element={
               <ProtectedRoute roles={['foreman']} isForemanRoute>
                 <ForemanApp />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/client"
+            element={
+              <ProtectedRoute roles={['client']} isClientRoute>
+                <ClientApp />
               </ProtectedRoute>
             }
           />

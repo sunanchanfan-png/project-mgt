@@ -13,6 +13,7 @@ const progressRoutes = require('./routes/progress');
 const permissionsRoutes = require('./routes/permissions');
 const reportsRoutes = require('./routes/reports');
 const photosRoutes = require('./routes/photos');
+const clientRoutes = require('./routes/client');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -31,6 +32,7 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/permissions', permissionsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/photos', photosRoutes);
+app.use('/api/client', clientRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
