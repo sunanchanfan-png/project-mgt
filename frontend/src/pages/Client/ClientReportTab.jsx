@@ -1,8 +1,9 @@
 // src/pages/Client/ClientReportTab.jsx
 // Tab "เล่มรายงาน" สำหรับแอปลูกค้า — พรีวิวหน้าตารายงานจริงบนจอ เหมือน CompiledReportTab.jsx (ฝั่ง staff
 // ทุกประการ) ต่างกันแค่ 2 อย่าง: (1) endpoint ทั้งหมดชี้ไป /api/client/* แทน (อ่านอย่างเดียว คนละตัวกับ
-// ฝั่ง staff — ดูเหตุผลที่ routes/client.js), (2) มี dropdown เลือกดูรายงานย้อนหลังในตัวเอง (ฝั่ง staff
-// เลือกจาก Reports.jsx ซึ่งลูกค้าไม่มีหน้านั้น) — โครงสร้าง/ลำดับหัวข้อของหน้าพรีวิวยังตรงกับของจริงเป๊ะ
+// ฝั่ง staff — ดูเหตุผลที่ routes/client.js), (2) dropdown เลือกดูรายงานย้อนหลังไม่ได้อยู่ในไฟล์นี้ — ย้าย
+// ไปอยู่ที่ ClientApp.jsx แล้ว (ต่อจากกล่องเลือกโครงการ ตามที่ตกลงกันไว้) component นี้รับแค่ reportId/
+// report (object) ที่เลือกแล้วมาใช้แสดงผลอย่างเดียว — โครงสร้าง/ลำดับหัวข้อของหน้าพรีวิวยังตรงกับของจริงเป๊ะ
 // เหมือนเดิม ถ้าแก้รูปแบบเล่มรายงานฝั่ง staff (CompiledReportTab.jsx / routes/reports.js GET /:id/export)
 // ในอนาคต ต้องกลับมาแก้ไฟล์นี้ให้ตรงกันด้วย (จงใจ copy มา ไม่ได้ import ใช้ร่วมกัน เพราะ endpoint คนละชุด)
 import React, { useEffect, useState } from 'react';
@@ -56,10 +57,7 @@ function fmtDMY(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-export default function ClientReportTab({ projectId, project }) {
-  const [reports, setReports] = useState([]);
-  const [reportId, setReportId] = useState('');
-  const [reportsError, setReportsError] = useState('');
+export default function ClientReportTab({ projectId, project, reportId, report }) {
   // เปิด/ปิดส่วนแสดงรูปแผนงาน — ปิดไว้เป็นค่าเริ่มต้นเสมอ (ไม่ให้ดันเนื้อหารายงานด้านล่างลงไปโดยไม่ตั้งใจ
   // ตอนเปิด Tab ครั้งแรก โดยเฉพาะโครงการที่มีแผนงานหลายหน้า)
   const [showSchedule, setShowSchedule] = useState(false);
@@ -76,22 +74,6 @@ export default function ClientReportTab({ projectId, project }) {
   const [overallLoading, setOverallLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // โหลดรายชื่อรายงานทั้งหมดของโครงการ (เรียงล่าสุดก่อน) — ใช้ทำ dropdown เลือกดูย้อนหลัง เลือกฉบับล่าสุด
-  // เป็นค่าเริ่มต้นเสมอ
-  useEffect(() => {
-    if (!projectId) return;
-    setReportsError('');
-    client.get('/client/reports', { params: { project_id: projectId } })
-      .then((res) => {
-        setReports(res.data.reports);
-        if (res.data.reports.length > 0) setReportId(res.data.reports[0].id);
-        else setReportId('');
-      })
-      .catch((err) => setReportsError(err.response?.data?.error || 'ดึงรายชื่อรายงานไม่สำเร็จ'));
-  }, [projectId]);
-
-  const report = reports.find((r) => String(r.id) === String(reportId));
 
   // ดึงข้อมูล S-Curve จาก Menu 3 Tab 4
   useEffect(() => {
@@ -297,7 +279,7 @@ export default function ClientReportTab({ projectId, project }) {
   return (
     <div className="progress-table-wrap">
       {project?.schedule_pdf_url && (
-        <div style={{ padding: '0 16px', marginBottom: 12 }}>
+        <div style={{ padding: '0 16px', marginBottom: 8 }}>
           <button
             type="button"
             className="client-app__select"
@@ -332,26 +314,11 @@ export default function ClientReportTab({ projectId, project }) {
         </div>
       )}
 
-      {reports.length > 0 && (
-        <div style={{ padding: '0 16px', marginBottom: 12 }}>
-          <select
-            className="client-app__select"
-            value={reportId}
-            onChange={(e) => setReportId(e.target.value)}
-          >
-            {reports.map((r) => (
-              <option key={r.id} value={r.id}>
-                รายงานครั้งที่ {r.report_no} ({fmtDMY(r.week_start)} - {fmtDMY(r.week_end)})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {reportsError && <p className="pdata-status pdata-status--warn">{reportsError}</p>}
-      {!reportsError && reports.length === 0 && <p className="report-preview__empty">ยังไม่มีรายงานที่เผยแพร่ให้ดูตอนนี้</p>}
+      {!reportId && <p className="report-preview__empty">ยังไม่มีรายงานที่เผยแพร่ให้ดูตอนนี้</p>}
       {loading && <p>กำลังโหลดข้อมูล...</p>}
       {error && <p className="pdata-status pdata-status--warn">{error}</p>}
+
+
 
 
       {ready && (
