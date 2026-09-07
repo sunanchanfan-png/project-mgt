@@ -97,13 +97,13 @@ router.get('/my-projects', async (req, res) => {
   try {
     if (req.user.role === 'admin' || req.user.role === 'system_mgr') {
       const result = await query(
-        `SELECT id, project_code, name, client_name, status, schedule_pdf_url
+        `SELECT id, project_code, name, client_name, status, schedule_pdf_url, schedule_pdf_pages
          FROM project_mgt.projects WHERE status = 'on' ORDER BY name`
       );
       return res.json({ projects: result.rows });
     }
     const result = await query(
-      `SELECT p.id, p.project_code, p.name, p.client_name, p.status, p.schedule_pdf_url
+      `SELECT p.id, p.project_code, p.name, p.client_name, p.status, p.schedule_pdf_url, p.schedule_pdf_pages
        FROM project_mgt.projects p
        JOIN project_mgt.client_project_access cpa ON cpa.project_id = p.id
        WHERE cpa.user_id = $1

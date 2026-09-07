@@ -201,14 +201,18 @@ router.post('/schedule-pdf', requirePermission('reports', 'compiled'), (req, res
     if (!projectId) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
     if (!req.file) return res.status(400).json({ error: 'ไม่พบไฟล์ PDF ที่ส่งมา' });
     try {
-      // resource_type: 'raw' บังคับเพราะเป็น PDF ไม่ใช่รูปภาพ (ดูคอมเมนต์ที่ lib/cloudinary.js)
-      const result = await uploadBuffer(req.file.buffer, 'sikarin/schedule-pdf', 'raw');
+      // resource_type: 'image' (ไม่ใช่ 'raw') — แม้จะเป็นไฟล์ PDF ก็ตาม เพราะต้องการให้ Cloudinary แปลง
+      // แต่ละหน้าเป็นรูปภาพให้อัตโนมัติ (ผ่าน URL transformation "pg_N") เพื่อโชว์ในแอปมือถือ/PWA ได้จริง
+      // — resource_type: 'raw' (ที่ใช้ตอนแรก) ทำให้เปิดไฟล์ตรงๆ บนมือถือไม่ได้ เพราะ browser/PWA ส่วนใหญ่
+      // ไม่มีตัวอ่าน PDF ในตัว โดยเฉพาะโหมด standalone ที่ติดตั้งเป็นไอคอนแอป
+      const result = await uploadBuffer(req.file.buffer, 'sikarin/schedule-pdf', 'image');
       const updateResult = await query(
-        'UPDATE project_mgt.projects SET schedule_pdf_url = $1 WHERE id = $2 RETURNING id, schedule_pdf_url',
-        [result.url, projectId]
+        `UPDATE project_mgt.projects SET schedule_pdf_url = $1, schedule_pdf_pages = $2
+         WHERE id = $3 RETURNING id, schedule_pdf_url, schedule_pdf_pages`,
+        [result.url, result.pages, projectId]
       );
       if (updateResult.rows.length === 0) return res.status(404).json({ error: 'ไม่พบโครงการนี้' });
-      res.json({ message: 'แนบไฟล์แผนงานเรียบร้อยแล้ว', schedule_pdf_url: result.url });
+      res.json({ message: 'แนบไฟล์แผนงานเรียบร้อยแล้ว', schedule_pdf_url: result.url, schedule_pdf_pages: result.pages });
     } catch (uploadErr) {
       console.error(uploadErr);
       res.status(500).json({ error: 'อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่' });

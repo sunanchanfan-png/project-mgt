@@ -23,7 +23,9 @@ if (configured) {
  * @param {string} resourceType - ประเภทไฟล์ตาม Cloudinary: 'image' (ค่าเริ่มต้น, ใช้กับรูปถ่ายหน้างาน)
  *   หรือ 'raw' (ไฟล์ทั่วไปที่ไม่ใช่รูป/วิดีโอ เช่น PDF แผนงาน MS-Project — ต้องใช้ 'raw' ไม่งั้น Cloudinary
  *   จะพยายามตีความเป็นรูปภาพแล้วอัปโหลดล้มเหลวหรือให้ไฟล์เพี้ยน)
- * @returns {Promise<{url: string, publicId: string}>}
+ * @returns {Promise<{url: string, publicId: string, pages: number}>} pages = จำนวนหน้าทั้งหมด (Cloudinary
+ *   คำนวณให้อัตโนมัติสำหรับไฟล์ที่มีหลายหน้าอย่าง PDF เมื่ออัปโหลดด้วย resourceType='image' — ไฟล์รูปทั่วไป
+ *   จะได้ pages = 1 เสมอ)
  */
 function uploadBuffer(buffer, folder = 'sikarin/progress-photos', resourceType = 'image') {
   if (!configured) {
@@ -34,7 +36,7 @@ function uploadBuffer(buffer, folder = 'sikarin/progress-photos', resourceType =
       { folder, resource_type: resourceType },
       (err, result) => {
         if (err) return reject(err);
-        resolve({ url: result.secure_url, publicId: result.public_id });
+        resolve({ url: result.secure_url, publicId: result.public_id, pages: result.pages || 1 });
       }
     );
     stream.end(buffer);

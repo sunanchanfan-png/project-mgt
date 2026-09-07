@@ -47,7 +47,8 @@ router.get('/', async (req, res) => {
     let sql = `SELECT id, project_code, name, client_name, description,
                       contract_number, contract_start, contract_end, duration_days,
                       contact_person, contact_phone, supervisor_name, supervisor_phone,
-                      location, budget_total, status, schedule_pdf_url, created_at, updated_at
+                      location, budget_total, status, schedule_pdf_url, schedule_pdf_pages,
+                      created_at, updated_at
                FROM project_mgt.projects`;
     const params = [];
     const whereClauses = [];

@@ -5,6 +5,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import client from '../../api/client';
 import SCurveChart from '../ProjectManagement/SCurveChart';
+import { buildPdfPageImageUrl } from '../../utils/cloudinaryPdf';
 
 const CATEGORY_TAB_MAP = {
   safety: 'safety',
@@ -399,7 +400,13 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
             />
           </label>
           {project?.schedule_pdf_url && (
-            <a href={project.schedule_pdf_url} target="_blank" rel="noreferrer" className="btn-secondary btn-secondary--sm">
+            <a
+              href={buildPdfPageImageUrl(project.schedule_pdf_url, 1)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary btn-secondary--sm"
+              title={project.schedule_pdf_pages > 1 ? `ดูหน้าแรกจากทั้งหมด ${project.schedule_pdf_pages} หน้า (ลูกค้าจะเห็นครบทุกหน้าในแอป)` : undefined}
+            >
               👁️ ดูไฟล์เดิม
             </a>
           )}

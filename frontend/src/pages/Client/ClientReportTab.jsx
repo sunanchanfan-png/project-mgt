@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import client from '../../api/client';
 import SCurveChart from '../ProjectManagement/SCurveChart';
+import { buildPdfPageImageUrl } from '../../utils/cloudinaryPdf';
 import '../Reports/Reports.css';
 
 const CATEGORY_KEYS = ['safety', 'problems', 'additional_work', 'pending'];
@@ -59,6 +60,9 @@ export default function ClientReportTab({ projectId, project }) {
   const [reports, setReports] = useState([]);
   const [reportId, setReportId] = useState('');
   const [reportsError, setReportsError] = useState('');
+  // เปิด/ปิดส่วนแสดงรูปแผนงาน — ปิดไว้เป็นค่าเริ่มต้นเสมอ (ไม่ให้ดันเนื้อหารายงานด้านล่างลงไปโดยไม่ตั้งใจ
+  // ตอนเปิด Tab ครั้งแรก โดยเฉพาะโครงการที่มีแผนงานหลายหน้า)
+  const [showSchedule, setShowSchedule] = useState(false);
 
   const [progress, setProgress] = useState(null);
   const [itemsByCategory, setItemsByCategory] = useState(null);
@@ -294,18 +298,37 @@ export default function ClientReportTab({ projectId, project }) {
     <div className="progress-table-wrap">
       {project?.schedule_pdf_url && (
         <div style={{ padding: '0 16px', marginBottom: 12 }}>
-          <a
-            href={project.schedule_pdf_url}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
             className="client-app__select"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              textDecoration: 'none', fontWeight: 600, color: 'var(--ink)',
-            }}
+            onClick={() => setShowSchedule((v) => !v)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600, color: 'var(--ink)' }}
           >
-            📄 ดาวน์โหลดแผนงาน (MS-Project PDF)
-          </a>
+            📄 {showSchedule ? 'ซ่อนแผนงาน' : 'ดูแผนงาน (MS-Project)'} {project.schedule_pdf_pages > 1 ? `— ${project.schedule_pdf_pages} หน้า` : ''}
+          </button>
+
+          {/* โชว์เป็นรูปภาพทีละหน้า (แปลงมาจาก PDF อัตโนมัติผ่าน Cloudinary) แทนการเปิดไฟล์ PDF ตรงๆ เพราะ
+              browser/PWA บนมือถือส่วนใหญ่ไม่มีตัวอ่าน PDF ในตัว โดยเฉพาะโหมด standalone ที่ติดตั้งเป็นไอคอน
+              แอป — รูปภาพเปิดได้ชัวร์ทุกที่ไม่มีข้อยกเว้น */}
+          {showSchedule && (
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Array.from({ length: project.schedule_pdf_pages || 1 }, (_, i) => i + 1).map((page) => (
+                <div key={page} style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
+                  {project.schedule_pdf_pages > 1 && (
+                    <p style={{ margin: 0, padding: '6px 10px', fontSize: 12, color: 'var(--ink-soft)', borderBottom: '1px solid var(--line)' }}>
+                      หน้า {page} / {project.schedule_pdf_pages}
+                    </p>
+                  )}
+                  <img
+                    src={buildPdfPageImageUrl(project.schedule_pdf_url, page)}
+                    alt={`แผนงานหน้า ${page}`}
+                    style={{ width: '100%', display: 'block' }}
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
