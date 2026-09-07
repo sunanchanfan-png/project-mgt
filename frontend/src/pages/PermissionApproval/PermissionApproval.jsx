@@ -14,6 +14,7 @@ const ROLE_OPTIONS = [
   { value: 'pm', label: 'pm (ผู้จัดการโครงการ)' },
   { value: 'admin', label: 'admin (ผู้ดูแลระบบ)' },
   { value: 'system_mgr', label: 'system_mgr (กำหนดสิทธิ์ผู้อื่นได้)' },
+  { value: 'client', label: 'client (ลูกค้า - ดูความคืบหน้างานผ่านแอปมือถือ)' },
 ];
 
 const STATUS_LABEL = {
@@ -33,6 +34,7 @@ export default function PermissionApproval() {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [users, setUsers] = useState([]);
   const [menus, setMenus] = useState([]);
+  const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [editingUser, setEditingUser] = useState(null); // user object ที่กำลังเปิด panel กำหนดสิทธิ์อยู่
@@ -50,6 +52,9 @@ export default function PermissionApproval() {
 
   useEffect(() => {
     client.get('/permissions/menu-registry').then((res) => setMenus(res.data.menus));
+    // ไม่กรอง status เพราะ client อาจถูกผูกให้ยังดูโครงการที่ปิดงานไปแล้วย้อนหลังได้ด้วย (ต่างจาก dropdown
+    // เลือกโครงการของเมนูอื่นๆ ในระบบที่กรองเฉพาะ status='on' เท่านั้น)
+    client.get('/projects').then((res) => setAllProjects(res.data.projects));
   }, []);
 
   async function handleReject(userId, isRevoke) {
@@ -155,6 +160,7 @@ export default function PermissionApproval() {
         <PermissionEditPanel
           user={editingUser}
           menus={menus}
+          allProjects={allProjects}
           onClose={() => setEditingUser(null)}
           onSaved={() => { setEditingUser(null); fetchUsers(); }}
         />
@@ -170,7 +176,7 @@ export default function PermissionApproval() {
   );
 }
 
-function PermissionEditPanel({ user, menus, onClose, onSaved }) {
+function PermissionEditPanel({ user, menus, allProjects, onClose, onSaved }) {
   const isApproveFlow = user.status === 'pending';
   const [role, setRole] = useState(user.role || 'viewer');
   const [selectedKeys, setSelectedKeys] = useState(() => {
@@ -178,8 +184,27 @@ function PermissionEditPanel({ user, menus, onClose, onSaved }) {
     (user.permissions || []).forEach((p) => set.add(`${p.menu_key}|${p.tab_key || ''}`));
     return set;
   });
+  // โครงการที่ client คนนี้เห็นได้ — โหลดจาก client_project_access เฉพาะตอนเปิด panel ของ user ที่เป็น
+  // role client อยู่แล้ว (approve flow ของ user ใหม่ยังไม่เคยมีแถวผูกไว้ ก็จะได้ set ว่างเป็นค่าเริ่มต้น)
+  const [clientProjectIds, setClientProjectIds] = useState(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user.role !== 'client') return;
+    client.get(`/permissions/users/${user.id}/client-projects`)
+      .then((res) => setClientProjectIds(new Set(res.data.project_ids)))
+      .catch(() => {}); // เงียบไว้ก่อนได้ — ถ้าดึงไม่สำเร็จ ผู้ใช้แค่ต้องติ๊กเลือกใหม่เองตอนบันทึก
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id]);
+
+  function toggleProject(projectId) {
+    setClientProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId); else next.add(projectId);
+      return next;
+    });
+  }
 
   function toggleKey(key) {
     setSelectedKeys((prev) => {
@@ -216,6 +241,11 @@ function PermissionEditPanel({ user, menus, onClose, onSaved }) {
         await client.post(`/permissions/users/${user.id}/approve`, { role, permissions });
       } else {
         await client.put(`/permissions/users/${user.id}`, { role, permissions });
+      }
+      // role client มีข้อมูลอีกชุดที่ต้องบันทึกแยกต่างหาก (ผูกกับโครงการ คนละตารางกับ user_permissions
+      // ด้านบน) — บันทึกต่อท้ายเป็นขั้นตอนที่ 2 เสมอเมื่อเลือก role นี้ ไม่ว่าจะเป็น approve หรือแก้ไขทีหลัง
+      if (role === 'client') {
+        await client.put(`/permissions/users/${user.id}/client-projects`, { project_ids: [...clientProjectIds] });
       }
       onSaved();
     } catch (err) {
@@ -265,6 +295,23 @@ function PermissionEditPanel({ user, menus, onClose, onSaved }) {
             </div>
           ))}
         </div>
+
+        {/* เฉพาะ role client เท่านั้นที่ต้องผูกกับโครงการ (คนละแกนกับสิทธิ์ Menu/Tab ด้านบน — role อื่นเห็น
+            ทุกโครงการที่เปิดอยู่ในระบบอยู่แล้วผ่าน dropdown ปกติของแต่ละเมนู ไม่ต้องมากำหนดเป็นรายโครงการ) */}
+        {role === 'client' && (
+          <div className="perm-modal__menus">
+            <span className="perm-modal__field-label">โครงการที่ลูกค้าคนนี้เห็นได้ (เลือกได้หลายโครงการ)</span>
+            {allProjects.length === 0 && <p className="pdata-status" style={{ margin: '4px 0' }}>ยังไม่มีโครงการในระบบ</p>}
+            <div className="perm-menu-block__tabs">
+              {allProjects.map((p) => (
+                <label key={p.id} className="perm-tab-checkbox">
+                  <input type="checkbox" checked={clientProjectIds.has(p.id)} onChange={() => toggleProject(p.id)} />
+                  {p.project_code} - {p.name}{p.status === 'closed' ? ' (ปิดงานแล้ว)' : ''}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="perm-modal__footer">
           <button className="btn-secondary btn-secondary--sm" onClick={onClose} disabled={saving}>ยกเลิก</button>
