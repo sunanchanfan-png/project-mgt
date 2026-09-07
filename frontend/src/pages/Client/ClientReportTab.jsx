@@ -5,11 +5,10 @@
 // เลือกจาก Reports.jsx ซึ่งลูกค้าไม่มีหน้านั้น) — โครงสร้าง/ลำดับหัวข้อของหน้าพรีวิวยังตรงกับของจริงเป๊ะ
 // เหมือนเดิม ถ้าแก้รูปแบบเล่มรายงานฝั่ง staff (CompiledReportTab.jsx / routes/reports.js GET /:id/export)
 // ในอนาคต ต้องกลับมาแก้ไฟล์นี้ให้ตรงกันด้วย (จงใจ copy มา ไม่ได้ import ใช้ร่วมกัน เพราะ endpoint คนละชุด)
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import client from '../../api/client';
 import SCurveChart from '../ProjectManagement/SCurveChart';
 import '../Reports/Reports.css';
-import './ClientReportTab.css';
 
 const CATEGORY_KEYS = ['safety', 'problems', 'additional_work', 'pending'];
 
@@ -73,7 +72,6 @@ export default function ClientReportTab({ projectId, project }) {
   const [overallLoading, setOverallLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const printRef = useRef(null);
 
   // โหลดรายชื่อรายงานทั้งหมดของโครงการ (เรียงล่าสุดก่อน) — ใช้ทำ dropdown เลือกดูย้อนหลัง เลือกฉบับล่าสุด
   // เป็นค่าเริ่มต้นเสมอ
@@ -161,10 +159,6 @@ export default function ClientReportTab({ projectId, project }) {
       .catch((err) => setError(err.response?.data?.error || 'ดึงข้อมูลไม่สำเร็จ'))
       .finally(() => setLoading(false));
   }, [reportId]);
-
-  function handlePrint() {
-    if (printRef.current) window.print();
-  }
 
   function renderWeeklyActivities() {
     if (weeklyLoading) return <p style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>กำลังโหลดข้อมูล...</p>;
@@ -297,26 +291,21 @@ export default function ClientReportTab({ projectId, project }) {
   const ready = progress && itemsByCategory && nextWeekGroups && photoGroups;
 
   return (
-    <div className="progress-table-wrap" ref={printRef}>
-      <div className="pdata-toolbar client-report-toolbar" style={{ marginTop: 0, marginBottom: 12 }}>
-        {reports.length > 0 && (
-          <select
-            className="client-app__select client-report-toolbar__select"
-            value={reportId}
-            onChange={(e) => setReportId(e.target.value)}
-          >
-            {reports.map((r) => (
-              <option key={r.id} value={r.id}>
-                รายงานครั้งที่ {r.report_no} ({fmtDMY(r.week_start)} - {fmtDMY(r.week_end)})
-              </option>
-            ))}
-          </select>
-        )}
-        <div style={{ flex: 1 }} />
-        <button className="btn-primary btn-primary--sm" onClick={handlePrint} disabled={loading || !ready}>
-          🖨️ พิมพ์
-        </button>
-      </div>
+    <div className="progress-table-wrap">
+      {reports.length > 0 && (
+        <select
+          className="client-app__select"
+          style={{ marginBottom: 12 }}
+          value={reportId}
+          onChange={(e) => setReportId(e.target.value)}
+        >
+          {reports.map((r) => (
+            <option key={r.id} value={r.id}>
+              รายงานครั้งที่ {r.report_no} ({fmtDMY(r.week_start)} - {fmtDMY(r.week_end)})
+            </option>
+          ))}
+        </select>
+      )}
 
       {reportsError && <p className="pdata-status pdata-status--warn">{reportsError}</p>}
       {!reportsError && reports.length === 0 && <p className="report-preview__empty">ยังไม่มีรายงานของโครงการนี้</p>}
