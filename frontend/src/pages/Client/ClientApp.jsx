@@ -93,14 +93,33 @@ export default function ClientApp() {
         <p className="client-app__status">ยังไม่มีสิทธิ์เข้าดูส่วนใดเลย กรุณาติดต่อผู้ดูแลระบบ</p>
       )}
 
-      {projectId && (activeTab === 'this-week' || activeTab === 'next-week') && (
-        <ClientWeeklyTab key={`${projectId}-${activeTab}`} projectId={projectId} week={activeTab === 'next-week' ? 'next' : 'this'} />
+      {/*
+        Mount ทุก Tab ที่มีสิทธิ์เข้าพร้อมกันทีเดียวตั้งแต่เลือกโครงการ (ไม่รอให้กดเข้า Tab ก่อนค่อยโหลด)
+        แล้วสลับ Tab ด้วยการซ่อน/โชว์ผ่าน CSS display เท่านั้น — component ไม่ unmount จึง "ไม่โหลดข้อมูลซ้ำ"
+        ทุกครั้งที่สลับ Tab ไปมา (state/ข้อมูลที่ดึงมาแล้วยังอยู่ในหน่วยความจำเหมือนเดิม) ส่วน key ผูกกับ
+        projectId เท่านั้น (ไม่ผูกกับ Tab อีกต่อไป) ทำให้ "เปลี่ยนโครงการ" เท่านั้นที่จะสั่ง remount + โหลด
+        ข้อมูลชุดใหม่ทั้งหมด ตรงตามที่ต้องการเป๊ะ — ข้อเสียเล็กน้อยคือช่วงแรกที่เลือกโครงการจะยิง API รวดเดียว
+        4 ชุดพร้อมกัน (เดิมยิงทีละ Tab ตามที่กด) แต่แลกมากับ "สลับ Tab ไปมาแล้วเห็นทันที ไม่มีจอโหลดซ้ำ"
+      */}
+      {projectId && TABS.some((t) => t.key === 'this-week') && (
+        <div style={{ display: activeTab === 'this-week' ? 'block' : 'none' }}>
+          <ClientWeeklyTab key={`${projectId}-this`} projectId={projectId} week="this" />
+        </div>
       )}
-      {projectId && activeTab === 'scurve' && (
-        <ClientSCurveTab key={projectId} projectId={projectId} />
+      {projectId && TABS.some((t) => t.key === 'next-week') && (
+        <div style={{ display: activeTab === 'next-week' ? 'block' : 'none' }}>
+          <ClientWeeklyTab key={`${projectId}-next`} projectId={projectId} week="next" />
+        </div>
       )}
-      {projectId && activeTab === 'full-report' && (
-        <ClientReportTab key={projectId} projectId={projectId} project={currentProject} />
+      {projectId && TABS.some((t) => t.key === 'scurve') && (
+        <div style={{ display: activeTab === 'scurve' ? 'block' : 'none' }}>
+          <ClientSCurveTab key={projectId} projectId={projectId} />
+        </div>
+      )}
+      {projectId && TABS.some((t) => t.key === 'full-report') && (
+        <div style={{ display: activeTab === 'full-report' ? 'block' : 'none' }}>
+          <ClientReportTab key={projectId} projectId={projectId} project={currentProject} />
+        </div>
       )}
     </div>
   );
