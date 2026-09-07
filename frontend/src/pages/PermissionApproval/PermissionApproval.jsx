@@ -110,50 +110,52 @@ export default function PermissionApproval() {
       {!loading && users.length === 0 && <p className="pdata-status">ไม่มีรายการในหมวดนี้</p>}
 
       {!loading && users.length > 0 && (
-        <table className="perm-table">
-          <thead>
-            <tr>
-              <th>ชื่อ</th>
-              <th>ชื่อผู้ใช้</th>
-              <th>Role</th>
-              <th>สถานะ</th>
-              <th>สมัครเมื่อ</th>
-              <th>จำนวนสิทธิ์</th>
-              <th>การจัดการ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td>{u.name}</td>
-                <td>{u.username}</td>
-                <td>{u.role || '-'}</td>
-                <td><span className={`perm-status ${STATUS_LABEL[u.status]?.className || ''}`}>{STATUS_LABEL[u.status]?.text || u.status}</span></td>
-                <td>{fmtDateTime(u.created_at)}</td>
-                <td>{u.permissions.length}</td>
-                <td>
-                  <div className="perm-table__actions">
-                    <button className="link-btn" onClick={() => setEditingUser(u)}>
-                      {u.status === 'pending' ? 'อนุมัติ' : 'แก้ไขสิทธิ์'}
-                    </button>
-                    {u.status === 'pending' && (
-                      <button className="link-btn link-btn--danger" onClick={() => handleReject(u.id, false)}>ปฏิเสธ</button>
-                    )}
-                    {u.status === 'approved' && String(u.id) !== String(currentUser?.id) && (
-                      <button className="link-btn link-btn--danger" onClick={() => handleReject(u.id, true)}>ยกเลิกสิทธิ์</button>
-                    )}
-                    {u.status === 'approved' && (
-                      <button className="link-btn" onClick={() => setResettingUser(u)}>รีเซ็ตรหัสผ่าน</button>
-                    )}
-                    {String(u.id) !== String(currentUser?.id) && (
-                      <button className="link-btn link-btn--danger" onClick={() => handleDelete(u.id)}>ลบ</button>
-                    )}
-                  </div>
-                </td>
+        <div className="perm-table-scroll">
+          <table className="perm-table">
+            <thead>
+              <tr>
+                <th>ชื่อ</th>
+                <th>ชื่อผู้ใช้</th>
+                <th>Role</th>
+                <th>สถานะ</th>
+                <th>สมัครเมื่อ</th>
+                <th>จำนวนสิทธิ์</th>
+                <th>การจัดการ</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td>{u.name}</td>
+                  <td>{u.username}</td>
+                  <td>{u.role || '-'}</td>
+                  <td><span className={`perm-status ${STATUS_LABEL[u.status]?.className || ''}`}>{STATUS_LABEL[u.status]?.text || u.status}</span></td>
+                  <td>{fmtDateTime(u.created_at)}</td>
+                  <td>{u.permissions.length}</td>
+                  <td>
+                    <div className="perm-table__actions">
+                      <button className="link-btn" onClick={() => setEditingUser(u)}>
+                        {u.status === 'pending' ? 'อนุมัติ' : 'แก้ไขสิทธิ์'}
+                      </button>
+                      {u.status === 'pending' && (
+                        <button className="link-btn link-btn--danger" onClick={() => handleReject(u.id, false)}>ปฏิเสธ</button>
+                      )}
+                      {u.status === 'approved' && String(u.id) !== String(currentUser?.id) && (
+                        <button className="link-btn link-btn--danger" onClick={() => handleReject(u.id, true)}>ยกเลิกสิทธิ์</button>
+                      )}
+                      {u.status === 'approved' && (
+                        <button className="link-btn" onClick={() => setResettingUser(u)}>รีเซ็ตรหัสผ่าน</button>
+                      )}
+                      {String(u.id) !== String(currentUser?.id) && (
+                        <button className="link-btn link-btn--danger" onClick={() => handleDelete(u.id)}>ลบ</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {editingUser && (

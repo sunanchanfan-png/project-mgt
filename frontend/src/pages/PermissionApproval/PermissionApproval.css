@@ -88,8 +88,17 @@
   font-weight: 600;
 }
 
+/* บนจอแคบ (มือถือ) ตารางนี้คอลัมน์เยอะ ถ้าปล่อยให้บีบตามความกว้างจอ (width: 100% เดิม) ตัวหนังสือ/ปุ่มจะ
+   ห่อบรรทัดจนอ่านยาก — ให้คงสัดส่วน/ความกว้างขั้นต่ำแบบเดียวกับจอ PC ไว้เสมอ แล้วเลื่อนดูแนวนอนแทน */
+.perm-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .perm-table {
   width: 100%;
+  min-width: 760px; /* กันบีบคอลัมน์บนจอแคบ — ต่ำกว่านี้ให้เลื่อนแนวนอนแทน */
   border-collapse: collapse;
   font-size: 12px;
 }
@@ -97,6 +106,7 @@
   padding: 8px 10px;
   border-bottom: 1px solid var(--line);
   text-align: left;
+  white-space: nowrap; /* กันแต่ละเซลล์ห่อบรรทัดเอง (ให้ scroll แนวนอนของ wrapper จัดการแทน) */
 }
 .perm-table th {
   color: var(--ink-soft);
