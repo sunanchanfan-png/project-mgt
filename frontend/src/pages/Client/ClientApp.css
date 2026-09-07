@@ -50,9 +50,30 @@
   color: var(--ink);
 }
 
+.client-app__tab-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
 .client-app__tab-toggle {
   display: flex;
   gap: 6px;
+  flex: 1;
+}
+
+.client-app__refresh-btn {
+  flex-shrink: 0;
+  width: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.client-app__refresh-btn:disabled {
+  opacity: 0.6;
 }
 
 .client-app__tab-btn {

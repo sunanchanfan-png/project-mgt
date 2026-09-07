@@ -29,6 +29,19 @@ export default function ClientApp() {
   const [projectId, setProjectId] = useState('');
   const [activeTab, setActiveTab] = useState(null);
   const [error, setError] = useState('');
+  // เพิ่มค่านี้ทุกครั้งที่กดปุ่ม "รีเฟรช" — ผูกกับ key ของทุก Tab (ทั้ง 4 อัน) บังคับให้ remount ดึงข้อมูล
+  // ล่าสุดใหม่หมดพร้อมกัน เพราะ client app preload ข้อมูลไว้ล่วงหน้าตอนเลือกโครงการแล้วไม่โหลดซ้ำเองอัตโนมัติ
+  // (ตามที่ตกลงกันไว้) ถ้าระหว่างนั้นมีข้อมูลใหม่จากฝั่งโฟร์แมน ต้องกดปุ่มนี้เองถึงจะเห็น
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  function handleRefresh() {
+    setRefreshVersion((v) => v + 1);
+    setRefreshing(true);
+    // แค่ทำปุ่มดูมีการตอบสนอง (spin/disable) สักครู่ — ตัว remount จริงเกิดทันทีที่ setRefreshVersion ทำงาน
+    // ไม่ต้องรอ callback จาก Tab ไหนเลย (ทุก Tab ดึงข้อมูลของตัวเองใหม่เองพร้อมกันอัตโนมัติ)
+    setTimeout(() => setRefreshing(false), 600);
+  }
 
   useEffect(() => {
     // เห็นเฉพาะโครงการที่ system_mgr/admin ผูกให้ดูได้ผ่านหน้า "อนุมัติและกำหนดสิทธิ์" เท่านั้น (ดู
@@ -73,17 +86,28 @@ export default function ClientApp() {
         )}
 
         {TABS.length > 0 && (
-          <div className="client-app__tab-toggle">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                className={`client-app__tab-btn ${activeTab === t.key ? 'client-app__tab-btn--active' : ''}`}
-                onClick={() => setActiveTab(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="client-app__tab-row">
+            <div className="client-app__tab-toggle">
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={`client-app__tab-btn ${activeTab === t.key ? 'client-app__tab-btn--active' : ''}`}
+                  onClick={() => setActiveTab(t.key)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="client-app__refresh-btn"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="ดึงข้อมูลล่าสุด"
+            >
+              {refreshing ? '⏳' : '🔄'}
+            </button>
           </div>
         )}
       </div>
@@ -96,29 +120,29 @@ export default function ClientApp() {
       {/*
         Mount ทุก Tab ที่มีสิทธิ์เข้าพร้อมกันทีเดียวตั้งแต่เลือกโครงการ (ไม่รอให้กดเข้า Tab ก่อนค่อยโหลด)
         แล้วสลับ Tab ด้วยการซ่อน/โชว์ผ่าน CSS display เท่านั้น — component ไม่ unmount จึง "ไม่โหลดข้อมูลซ้ำ"
-        ทุกครั้งที่สลับ Tab ไปมา (state/ข้อมูลที่ดึงมาแล้วยังอยู่ในหน่วยความจำเหมือนเดิม) ส่วน key ผูกกับ
-        projectId เท่านั้น (ไม่ผูกกับ Tab อีกต่อไป) ทำให้ "เปลี่ยนโครงการ" เท่านั้นที่จะสั่ง remount + โหลด
-        ข้อมูลชุดใหม่ทั้งหมด ตรงตามที่ต้องการเป๊ะ — ข้อเสียเล็กน้อยคือช่วงแรกที่เลือกโครงการจะยิง API รวดเดียว
-        4 ชุดพร้อมกัน (เดิมยิงทีละ Tab ตามที่กด) แต่แลกมากับ "สลับ Tab ไปมาแล้วเห็นทันที ไม่มีจอโหลดซ้ำ"
+        ทุกครั้งที่สลับ Tab ไปมา (state/ข้อมูลที่ดึงมาแล้วยังอยู่ในหน่วยความจำเหมือนเดิม) key ผูกกับทั้ง
+        projectId (เปลี่ยนโครงการ = โหลดชุดใหม่ทั้งหมด) และ refreshVersion (กดปุ่มรีเฟรช = โหลดชุดใหม่
+        ทั้งหมดเหมือนกัน โดยไม่ต้องเปลี่ยนโครงการ) — ข้อเสียเล็กน้อยคือช่วงแรกที่เลือกโครงการ/กดรีเฟรชจะยิง
+        API รวดเดียว 4 ชุดพร้อมกัน แต่แลกมากับ "สลับ Tab ไปมาแล้วเห็นทันที ไม่มีจอโหลดซ้ำ"
       */}
       {projectId && TABS.some((t) => t.key === 'this-week') && (
         <div style={{ display: activeTab === 'this-week' ? 'block' : 'none' }}>
-          <ClientWeeklyTab key={`${projectId}-this`} projectId={projectId} week="this" />
+          <ClientWeeklyTab key={`${projectId}-this-${refreshVersion}`} projectId={projectId} week="this" />
         </div>
       )}
       {projectId && TABS.some((t) => t.key === 'next-week') && (
         <div style={{ display: activeTab === 'next-week' ? 'block' : 'none' }}>
-          <ClientWeeklyTab key={`${projectId}-next`} projectId={projectId} week="next" />
+          <ClientWeeklyTab key={`${projectId}-next-${refreshVersion}`} projectId={projectId} week="next" />
         </div>
       )}
       {projectId && TABS.some((t) => t.key === 'scurve') && (
         <div style={{ display: activeTab === 'scurve' ? 'block' : 'none' }}>
-          <ClientSCurveTab key={projectId} projectId={projectId} />
+          <ClientSCurveTab key={`${projectId}-${refreshVersion}`} projectId={projectId} />
         </div>
       )}
       {projectId && TABS.some((t) => t.key === 'full-report') && (
         <div style={{ display: activeTab === 'full-report' ? 'block' : 'none' }}>
-          <ClientReportTab key={projectId} projectId={projectId} project={currentProject} />
+          <ClientReportTab key={`${projectId}-${refreshVersion}`} projectId={projectId} project={currentProject} />
         </div>
       )}
     </div>

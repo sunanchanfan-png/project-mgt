@@ -30,7 +30,7 @@ function flattenActivities(groups) {
   return list;
 }
 
-export default function MobileForemanTab({ projectId, week }) {
+export default function MobileForemanTab({ projectId, week, onDataChanged }) {
   const [activities, setActivities] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,6 +50,10 @@ export default function MobileForemanTab({ projectId, week }) {
   function handleSaved() {
     setOpenActivity(null);
     fetchData();
+    // แจ้ง ForemanApp (parent) ว่ามีการบันทึกข้อมูลใหม่ — เพื่อให้ Tab อื่นที่ preload ไว้ล่วงหน้าแล้ว (เช่น
+    // S-Curve, อีกสัปดาห์หนึ่งที่ไม่ได้แก้) รู้ตัวว่าต้องไปดึงข้อมูลใหม่ด้วย ไม่งั้นจะยังค้างข้อมูลเก่าอยู่
+    // (เพราะเปลี่ยนมาใช้วิธี mount ค้างไว้ตลอดไม่ unmount ตอนสลับ Tab แล้ว — ดู ForemanApp.jsx)
+    if (onDataChanged) onDataChanged();
   }
 
   if (openActivity) {

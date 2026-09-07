@@ -27,6 +27,11 @@ export default function ForemanApp() {
   // project_id อย่างเดียว แต่ Tab ความปลอดภัยผูกกับ report_items ที่ต้องรู้ reportId ก่อน)
   const [reportId, setReportId] = useState('');
   const [reportError, setReportError] = useState('');
+  // เพิ่มค่านี้ทุกครั้งที่บันทึกงานสำเร็จที่ Tab ไหนก็ตาม (ผ่าน onDataChanged) — ใช้ผูกกับ key ของ Tab
+  // "อื่น" ที่ preload ค้างไว้อยู่แล้ว (ไม่ใช่ Tab ที่เพิ่งบันทึก เพราะ Tab นั้นรีเฟรชตัวเองอยู่แล้ว) เพื่อ
+  // บังคับให้ remount ดึงข้อมูลใหม่ตาม ไม่งั้นจะค้างข้อมูลเก่าที่ preload ไว้ก่อนหน้า
+  const [dataVersion, setDataVersion] = useState(0);
+  const bumpDataVersion = () => setDataVersion((v) => v + 1);
 
   useEffect(() => {
     // foreman เห็นเฉพาะโครงการที่ "เปิดอยู่" เหมือนเมนูอื่นๆ ในระบบ
@@ -82,20 +87,41 @@ export default function ForemanApp() {
         </div>
       </div>
 
-      {projectId && (activeTab === 'this' || activeTab === 'next') && (
-        <MobileForemanTab key={`${projectId}-${activeTab}`} projectId={projectId} week={activeTab} />
+      {/*
+        Mount ทุก Tab พร้อมกันตั้งแต่เลือกโครงการ (preload) แล้วสลับ Tab ด้วยการซ่อน/โชว์ผ่าน CSS เท่านั้น
+        (เหมือนที่ทำกับ ClientApp) — ต่างจาก client ตรงที่ foreman แก้ไขข้อมูลได้ พอบันทึกสำเร็จที่ Tab ไหน
+        ก็ตาม ("สัปดาห์นี้"/"สัปดาห์หน้า") จะเรียก onDataChanged เพิ่ม dataVersion ซึ่งผูกอยู่กับ key ของ
+        ทั้ง 2 Tab งานสัปดาห์ + S-Curve เสมอ (สมมาตรกัน เพราะบันทึกจาก Tab ไหนก็ได้ ไม่รู้ล่วงหน้าว่าจะเป็น
+        Tab ไหน) บังคับให้ remount ดึงข้อมูลใหม่ทั้งหมดหลังบันทึกทุกครั้ง กันไม่ให้ Tab ที่ไม่ได้แก้ค้าง
+        ข้อมูลเก่าที่ preload ไว้ก่อนหน้า (เช่น บันทึกงานที่ "สัปดาห์นี้" แล้ว S-Curve/สัปดาห์หน้าต้องขยับตาม)
+        Tab ความปลอดภัย ไม่ต้องผูก dataVersion เพราะข้อมูลคนละชุด (report_items) ไม่ถูกกระทบจากการบันทึก
+        ความคืบหน้างานเลย
+      */}
+      {projectId && (
+        <div style={{ display: activeTab === 'this' ? 'block' : 'none' }}>
+          <MobileForemanTab key={`${projectId}-this-${dataVersion}`} projectId={projectId} week="this" onDataChanged={bumpDataVersion} />
+        </div>
       )}
-      {projectId && activeTab === 'scurve' && (
-        <ForemanSCurveTab key={projectId} projectId={projectId} />
+      {projectId && (
+        <div style={{ display: activeTab === 'next' ? 'block' : 'none' }}>
+          <MobileForemanTab key={`${projectId}-next-${dataVersion}`} projectId={projectId} week="next" onDataChanged={bumpDataVersion} />
+        </div>
       )}
-      {projectId && activeTab === 'safety' && (
-        reportError ? (
-          <p className="fsafety__status fsafety__status--warn" style={{ padding: '24px 12px' }}>{reportError}</p>
-        ) : reportId ? (
-          <ForemanSafetyTab key={reportId} reportId={reportId} />
-        ) : (
-          <p className="fsafety__status" style={{ padding: '24px 12px' }}>กำลังเตรียมรายงานสัปดาห์ปัจจุบัน...</p>
-        )
+      {projectId && (
+        <div style={{ display: activeTab === 'scurve' ? 'block' : 'none' }}>
+          <ForemanSCurveTab key={`${projectId}-${dataVersion}`} projectId={projectId} />
+        </div>
+      )}
+      {projectId && (
+        <div style={{ display: activeTab === 'safety' ? 'block' : 'none' }}>
+          {reportError ? (
+            <p className="fsafety__status fsafety__status--warn" style={{ padding: '24px 12px' }}>{reportError}</p>
+          ) : reportId ? (
+            <ForemanSafetyTab key={reportId} reportId={reportId} />
+          ) : (
+            <p className="fsafety__status" style={{ padding: '24px 12px' }}>กำลังเตรียมรายงานสัปดาห์ปัจจุบัน...</p>
+          )}
+        </div>
       )}
     </div>
   );
