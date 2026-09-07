@@ -60,8 +60,16 @@ async function requireProjectAccess(req, res, next) {
   try {
     let projectId = req.query.project_id;
     if (!projectId && req.params.id) {
-      const reportResult = await query('SELECT project_id FROM project_mgt.reports WHERE id = $1', [req.params.id]);
+      const reportResult = await query(
+        'SELECT project_id, approval_status FROM project_mgt.reports WHERE id = $1',
+        [req.params.id]
+      );
       if (reportResult.rows.length === 0) return res.status(404).json({ error: 'ไม่พบรายงานนี้' });
+      // รายงานที่ยังไม่อนุมัติ (draft) ห้าม client เข้าดูเด็ดขาด แม้จะพิมพ์ report id ตรงๆ เอง (เผื่อเดา id
+      // ถูก) — GET /client/reports (list) กรองออกไปแล้วชั้นหนึ่ง แต่เช็คซ้ำที่นี่อีกชั้นเป็น defense in depth
+      if (reportResult.rows[0].approval_status !== 'approved') {
+        return res.status(403).json({ error: 'รายงานฉบับนี้ยังไม่ได้เผยแพร่ กรุณาติดต่อผู้ดูแลโครงการ' });
+      }
       projectId = reportResult.rows[0].project_id;
     }
     if (!projectId) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
@@ -314,7 +322,9 @@ router.get('/reports', requireClientTab('full-report'), requireProjectAccess, as
     const { project_id } = req.query;
     const result = await query(
       `SELECT id, report_no, week_start, week_end, created_at
-       FROM project_mgt.reports WHERE project_id = $1 ORDER BY week_start DESC`,
+       FROM project_mgt.reports
+       WHERE project_id = $1 AND approval_status = 'approved'
+       ORDER BY week_start DESC`,
       [project_id]
     );
     res.json({ reports: result.rows });

@@ -65,7 +65,7 @@ function fmtDMY(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-export default function CompiledReportTab({ reportId, reportLabel, project, report, printBarHidden = false }) {
+export default function CompiledReportTab({ reportId, reportLabel, project, report, printBarHidden = false, onReportUpdated }) {
   const [progress, setProgress] = useState(null);
   const [itemsByCategory, setItemsByCategory] = useState(null);
   const [nextWeekGroups, setNextWeekGroups] = useState(null);
@@ -78,6 +78,7 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
   const [overallLoading, setOverallLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [approving, setApproving] = useState(false);
   const printRef = useRef(null);
 
   // ดึงข้อมูล S-Curve จาก Menu 3 Tab 4
@@ -175,6 +176,26 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
     if (printRef.current) {
       // ใช้ window.print() เพื่อพิมพ์เฉพาะเนื้อหาใน printRef
       window.print();
+    }
+  }
+
+  // สลับสถานะ Draft/อนุมัติ — 'approved' เท่านั้นที่จะไปโผล่ในแอปลูกค้า (GET /api/client/reports) ไม่ผูกกับ
+  // ว่า week จบหรือยัง กดอนุมัติก่อนวันจบ week ได้เลยตามที่ตกลงกันไว้ — เรียก onReportUpdated() ให้ parent
+  // (Reports.jsx) โหลดรายชื่อรายงานใหม่หลังบันทึกสำเร็จ เพื่ออัปเดตสถานะที่ dropdown ด้วย
+  async function handleToggleApproval() {
+    const nextStatus = report?.approval_status === 'approved' ? 'draft' : 'approved';
+    const msg = nextStatus === 'approved'
+      ? 'ยืนยันอนุมัติรายงานฉบับนี้? ลูกค้าจะเห็นรายงานฉบับนี้ในแอปมือถือทันที'
+      : 'ยืนยันเปลี่ยนกลับเป็น Draft? ลูกค้าจะมองไม่เห็นรายงานฉบับนี้อีกต่อไปจนกว่าจะอนุมัติใหม่';
+    if (!window.confirm(msg)) return;
+    setApproving(true);
+    try {
+      await client.put(`/reports/${reportId}/approval`, { approval_status: nextStatus });
+      if (onReportUpdated) onReportUpdated();
+    } catch (err) {
+      alert(err.response?.data?.error || 'บันทึกสถานะไม่สำเร็จ');
+    } finally {
+      setApproving(false);
     }
   }
 
@@ -333,7 +354,17 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
           filter+tabs ด้านบน — ให้ผู้ใช้เปิดดูเนื้อหาเล่มรายงานเต็มจอได้ทันทีโดยไม่ต้องเลื่อนผ่านส่วนนี้) ===== */}
       {!printBarHidden && (
         <div className="pdata-toolbar" style={{ marginTop: 0, marginBottom: 12 }}>
+          <span className={`report-approval-badge ${report?.approval_status === 'approved' ? 'report-approval-badge--approved' : 'report-approval-badge--draft'}`}>
+            {report?.approval_status === 'approved' ? '✅ อนุมัติแล้ว (ลูกค้าเห็นได้)' : '📝 Draft (ลูกค้ายังไม่เห็น)'}
+          </span>
           <div style={{ flex: 1 }} />
+          <button
+            className={report?.approval_status === 'approved' ? 'btn-secondary btn-secondary--sm' : 'btn-primary btn-primary--sm'}
+            onClick={handleToggleApproval}
+            disabled={loading || approving || !reportId}
+          >
+            {approving ? 'กำลังบันทึก...' : (report?.approval_status === 'approved' ? 'เปลี่ยนกลับเป็น Draft' : '✔ อนุมัติให้ลูกค้าเห็น')}
+          </button>
           <button className="btn-primary btn-primary--sm" onClick={handlePrint} disabled={loading}>
             🖨️ พิมพ์
           </button>

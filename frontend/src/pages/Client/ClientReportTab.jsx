@@ -293,22 +293,23 @@ export default function ClientReportTab({ projectId, project }) {
   return (
     <div className="progress-table-wrap">
       {reports.length > 0 && (
-        <select
-          className="client-app__select"
-          style={{ marginBottom: 12 }}
-          value={reportId}
-          onChange={(e) => setReportId(e.target.value)}
-        >
-          {reports.map((r) => (
-            <option key={r.id} value={r.id}>
-              รายงานครั้งที่ {r.report_no} ({fmtDMY(r.week_start)} - {fmtDMY(r.week_end)})
-            </option>
-          ))}
-        </select>
+        <div style={{ padding: '0 16px', marginBottom: 12 }}>
+          <select
+            className="client-app__select"
+            value={reportId}
+            onChange={(e) => setReportId(e.target.value)}
+          >
+            {reports.map((r) => (
+              <option key={r.id} value={r.id}>
+                รายงานครั้งที่ {r.report_no} ({fmtDMY(r.week_start)} - {fmtDMY(r.week_end)})
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
       {reportsError && <p className="pdata-status pdata-status--warn">{reportsError}</p>}
-      {!reportsError && reports.length === 0 && <p className="report-preview__empty">ยังไม่มีรายงานของโครงการนี้</p>}
+      {!reportsError && reports.length === 0 && <p className="report-preview__empty">ยังไม่มีรายงานที่เผยแพร่ให้ดูตอนนี้</p>}
       {loading && <p>กำลังโหลดข้อมูล...</p>}
       {error && <p className="pdata-status pdata-status--warn">{error}</p>}
 

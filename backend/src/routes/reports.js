@@ -131,7 +131,7 @@ router.get('/', requirePermission('reports', 'plan-progress'), async (req, res) 
     const { project_id } = req.query;
     if (!project_id) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
     const result = await query(
-      `SELECT id, report_no, week_start, week_end, created_at
+      `SELECT id, report_no, week_start, week_end, created_at, approval_status
        FROM project_mgt.reports WHERE project_id = $1 ORDER BY week_start DESC`,
       [project_id]
     );
@@ -139,6 +139,31 @@ router.get('/', requirePermission('reports', 'plan-progress'), async (req, res) 
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'ดึงรายชื่อรายงานไม่สำเร็จ' });
+  }
+});
+
+/**
+ * PUT /api/reports/:id/approval
+ * body: { approval_status: 'draft' | 'approved' }
+ * สลับสถานะรายงาน — อยู่ใต้สิทธิ์ Tab เดียวกับ "เล่มรายงาน" (reports/compiled) เพราะเป็นปุ่มที่โผล่คู่กับ
+ * ปุ่มพิมพ์ในหน้านั้นเป๊ะ — 'approved' เท่านั้นที่จะไปโผล่ใน GET /api/client/reports (ดู routes/client.js)
+ */
+router.put('/:id/approval', requirePermission('reports', 'compiled'), async (req, res) => {
+  try {
+    const { approval_status: approvalStatus } = req.body;
+    if (!['draft', 'approved'].includes(approvalStatus)) {
+      return res.status(400).json({ error: "approval_status ต้องเป็น 'draft' หรือ 'approved' เท่านั้น" });
+    }
+    const result = await query(
+      `UPDATE project_mgt.reports SET approval_status = $1 WHERE id = $2
+       RETURNING id, approval_status`,
+      [approvalStatus, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบรายงานนี้' });
+    res.json({ message: 'บันทึกสถานะเรียบร้อยแล้ว', report: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'บันทึกสถานะไม่สำเร็จ' });
   }
 });
 

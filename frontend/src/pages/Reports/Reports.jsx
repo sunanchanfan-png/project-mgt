@@ -147,7 +147,7 @@ export default function Reports() {
                   {reports.length === 0 && <option value="">ยังไม่มีรายงาน</option>}
                   {reports.map((r) => (
                     <option key={r.id} value={r.id}>
-                      #{r.report_no} ({fmtDMY(r.week_start)} - {fmtDMY(r.week_end)})
+                      #{r.report_no} ({fmtDMY(r.week_start)} - {fmtDMY(r.week_end)}){r.approval_status !== 'approved' ? ' (Draft)' : ''}
                     </option>
                   ))}
                 </select>
@@ -212,6 +212,7 @@ export default function Reports() {
             project={projects.find((p) => String(p.id) === String(projectId))}
             report={currentReport}
             printBarHidden={showCollapseToggle && headerCollapsed}
+            onReportUpdated={fetchReports}
           />
         )}
       </div>
