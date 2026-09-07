@@ -228,11 +228,13 @@ router.get('/scurve', async (req, res) => {
       if (pointDates[pointDates.length - 1] !== maxDate) pointDates.push(maxDate);
     }
 
-    const points = [];
-    for (let idx = 0; idx < pointDates.length; idx += 1) {
-      const date = pointDates[idx];
-      // eslint-disable-next-line no-await-in-loop
-      const actualMap = await getLatestActualMap(level3Ids, date);
+    // ยิง query ของทุกจุดบนกราฟพร้อมกันทีเดียว (Promise.all) แทนการวน await ทีละจุด (เดิมทำแบบ sequential
+    // ผ่าน for-loop — โครงการที่มีหลายสิบสัปดาห์ ก็คือรอ DB round-trip หลายสิบรอบเรียงต่อกัน ช้ามาก) แต่ละ
+    // จุดคำนวณจาก asOfDate คนละวันกัน เป็นอิสระต่อกันโดยสมบูรณ์ ยิงพร้อมกันได้ปลอดภัย ไม่กระทบผลลัพธ์เลย
+    const actualMapsByDate = await Promise.all(pointDates.map((date) => getLatestActualMap(level3Ids, date)));
+
+    const points = pointDates.map((date, idx) => {
+      const actualMap = actualMapsByDate[idx];
       let planSum = 0;
       let actualSum = 0;
       withDates.forEach((a) => {
@@ -247,12 +249,12 @@ router.get('/scurve', async (req, res) => {
       // สัปดาห์ที่จบสมบูรณ์ — ผลคือกราฟ actual จะแสดงแค่ถึง "สัปดาห์ที่แล้ว" (สัปดาห์ล่าสุดที่จบสมบูรณ์แล้ว)
       // ส่วนสถานะ "วันนี้จริง" (รวมความคืบหน้าที่ยังไม่ครบสัปดาห์) ยังโชว์แยกในกล่องสรุปข้างล่างตามปกติ
       const isCompletedWeekBoundary = idx === 0 || toUTCDate(date).getUTCDay() === 0;
-      points.push({
+      return {
         date,
         plan: planSum / totalWeight,
         actual: (date > today || !isCompletedWeekBoundary) ? null : actualSum / totalWeight,
-      });
-    }
+      };
+    });
 
     // ค่า ณ "วันนี้จริง" แยกต่างหาก (ไม่ใช่จุดบนแกนกราฟ เพราะแกนกราฟเป็นรายสัปดาห์เท่านั้น) — ให้ frontend
     // วาดกล่องสรุป Plan/Actual/Gain(+)/Delay(-) พร้อมเส้นชี้ไปยังตำแหน่งวันนี้บนกราฟ

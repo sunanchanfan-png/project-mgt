@@ -241,11 +241,13 @@ router.get('/scurve', requireClientTab('scurve'), requireProjectAccess, async (r
       if (pointDates[pointDates.length - 1] !== maxDate) pointDates.push(maxDate);
     }
 
-    const points = [];
-    for (let idx = 0; idx < pointDates.length; idx += 1) {
-      const date = pointDates[idx];
-      // eslint-disable-next-line no-await-in-loop
-      const actualMap = await getLatestActualMap(level3Ids, date);
+    // ยิง query ของทุกจุดบนกราฟพร้อมกันทีเดียว (Promise.all) แทนการวน await ทีละจุด (เดิมทำแบบ sequential
+    // ผ่าน for-loop — โครงการที่มีหลายสิบสัปดาห์ ก็คือรอ DB round-trip หลายสิบรอบเรียงต่อกัน ช้ามาก) แต่ละ
+    // จุดคำนวณจาก asOfDate คนละวันกัน เป็นอิสระต่อกันโดยสมบูรณ์ ยิงพร้อมกันได้ปลอดภัย ไม่กระทบผลลัพธ์เลย
+    const actualMapsByDate = await Promise.all(pointDates.map((date) => getLatestActualMap(level3Ids, date)));
+
+    const points = pointDates.map((date, idx) => {
+      const actualMap = actualMapsByDate[idx];
       let planSum = 0;
       let actualSum = 0;
       withDates.forEach((a) => {
@@ -253,12 +255,12 @@ router.get('/scurve', requireClientTab('scurve'), requireProjectAccess, async (r
         actualSum += a.weight_percent * (actualMap.get(a.id) || 0);
       });
       const isCompletedWeekBoundary = idx === 0 || toUTCDate(date).getUTCDay() === 0;
-      points.push({
+      return {
         date,
         plan: planSum / totalWeight,
         actual: (date > today || !isCompletedWeekBoundary) ? null : actualSum / totalWeight,
-      });
-    }
+      };
+    });
 
     const todayClamped = today > maxDate ? maxDate : today;
     const todayActualMap = await getLatestActualMap(level3Ids, todayClamped);
