@@ -6,9 +6,11 @@
 // Tab คุณภาพงาน/ความปลอดภัย/ปัญหาอุปสรรค/งานเพิ่มลด/เรื่องที่ค้าง ใช้ endpoint ร่วมกันชุดเดียว (ต่างกันแค่
 // query param category) เพราะมีรูปแบบเหมือนกันทุกอัน (ลำดับ+รายการ+จัดการ)
 const express = require('express');
+const multer = require('multer');
 const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, HeadingLevel, AlignmentType, WidthType, BorderStyle, ShadingType } = require('docx');
 const { query } = require('../db');
 const { verifyToken, requirePermission, hasPermission } = require('../middleware/auth');
+const { uploadBuffer, isConfigured } = require('../lib/cloudinary');
 const {
   fmtISO, toUTCDate, MS_PER_DAY, getFlatWbsTree, getLatestActualMap, buildProgressTree, computePlanPercent,
   getProjectWeekNumber, getProjectWeekBoundaries,
@@ -165,6 +167,53 @@ router.put('/:id/approval', requirePermission('reports', 'compiled'), async (req
     console.error(err);
     res.status(500).json({ error: 'บันทึกสถานะไม่สำเร็จ' });
   }
+});
+
+// ===== แนบไฟล์แผนงาน MS-Project (PDF) — ผูกกับ "โครงการ" ไม่ใช่รายงานฉบับใดฉบับหนึ่ง (ดูเหตุผนใน
+// migration_019_schedule_pdf.sql) ปุ่มอยู่ที่ Tab เล่มรายงานฝั่ง staff แต่ endpoint แก้ที่ตาราง projects =====
+const SCHEDULE_PDF_MAX_SIZE = 20 * 1024 * 1024; // 20MB — แผนงาน MS-Project หลายหน้า/ละเอียดสูง ใหญ่กว่ารูปถ่ายทั่วไปได้มาก
+const uploadSchedulePdf = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: SCHEDULE_PDF_MAX_SIZE },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('รองรับเฉพาะไฟล์ PDF เท่านั้น'));
+    }
+    cb(null, true);
+  },
+});
+
+/**
+ * POST /api/reports/schedule-pdf?project_id=X
+ * multipart/form-data, field name = "pdf" — อัปโหลดไฟล์ใหม่ทับของเก่าเสมอ (1 โครงการ = 1 ไฟล์)
+ * ใช้สิทธิ์ Tab เดียวกับ "เล่มรายงาน" (reports/compiled) เพราะเป็นปุ่มที่อยู่ในหน้าเดียวกัน
+ */
+router.post('/schedule-pdf', requirePermission('reports', 'compiled'), (req, res) => {
+  if (!isConfigured()) {
+    return res.status(503).json({ error: 'ระบบอัปโหลดไฟล์ยังไม่พร้อมใช้งาน (ยังไม่ได้ตั้งค่า Cloudinary บนเซิร์ฟเวอร์)' });
+  }
+  uploadSchedulePdf.single('pdf')(req, res, async (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE' ? 'ไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 20MB)' : (err.message || 'อัปโหลดไม่สำเร็จ');
+      return res.status(400).json({ error: msg });
+    }
+    const { project_id: projectId } = req.query;
+    if (!projectId) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
+    if (!req.file) return res.status(400).json({ error: 'ไม่พบไฟล์ PDF ที่ส่งมา' });
+    try {
+      // resource_type: 'raw' บังคับเพราะเป็น PDF ไม่ใช่รูปภาพ (ดูคอมเมนต์ที่ lib/cloudinary.js)
+      const result = await uploadBuffer(req.file.buffer, 'sikarin/schedule-pdf', 'raw');
+      const updateResult = await query(
+        'UPDATE project_mgt.projects SET schedule_pdf_url = $1 WHERE id = $2 RETURNING id, schedule_pdf_url',
+        [result.url, projectId]
+      );
+      if (updateResult.rows.length === 0) return res.status(404).json({ error: 'ไม่พบโครงการนี้' });
+      res.json({ message: 'แนบไฟล์แผนงานเรียบร้อยแล้ว', schedule_pdf_url: result.url });
+    } catch (uploadErr) {
+      console.error(uploadErr);
+      res.status(500).json({ error: 'อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่' });
+    }
+  });
 });
 
 /**

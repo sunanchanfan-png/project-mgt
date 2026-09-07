@@ -57,13 +57,18 @@ export default function Reports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [TABS.map((t) => t.key).join(',')]);
 
-  useEffect(() => {
+  function fetchProjects() {
     // เมนูนี้ (จัดทำรายงาน) ให้เลือกได้เฉพาะโครงการที่ "เปิดอยู่" (status=on) เท่านั้น — ตัดโครงการที่ปิด
     // แล้วออกจาก dropdown ตามที่ตกลงกันไว้
-    client.get('/projects', { params: { status: 'on' } }).then((res) => {
+    return client.get('/projects', { params: { status: 'on' } }).then((res) => {
       setProjects(res.data.projects);
-      if (res.data.projects.length > 0) setProjectId(res.data.projects[0].id);
+      setProjectId((prev) => prev || (res.data.projects.length > 0 ? res.data.projects[0].id : ''));
     });
+  }
+
+  useEffect(() => {
+    fetchProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function fetchReports() {
@@ -213,6 +218,7 @@ export default function Reports() {
             report={currentReport}
             printBarHidden={showCollapseToggle && headerCollapsed}
             onReportUpdated={fetchReports}
+            onProjectUpdated={fetchProjects}
           />
         )}
       </div>

@@ -292,6 +292,23 @@ export default function ClientReportTab({ projectId, project }) {
 
   return (
     <div className="progress-table-wrap">
+      {project?.schedule_pdf_url && (
+        <div style={{ padding: '0 16px', marginBottom: 12 }}>
+          <a
+            href={project.schedule_pdf_url}
+            target="_blank"
+            rel="noreferrer"
+            className="client-app__select"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              textDecoration: 'none', fontWeight: 600, color: 'var(--ink)',
+            }}
+          >
+            📄 ดาวน์โหลดแผนงาน (MS-Project PDF)
+          </a>
+        </div>
+      )}
+
       {reports.length > 0 && (
         <div style={{ padding: '0 16px', marginBottom: 12 }}>
           <select
@@ -312,6 +329,7 @@ export default function ClientReportTab({ projectId, project }) {
       {!reportsError && reports.length === 0 && <p className="report-preview__empty">ยังไม่มีรายงานที่เผยแพร่ให้ดูตอนนี้</p>}
       {loading && <p>กำลังโหลดข้อมูล...</p>}
       {error && <p className="pdata-status pdata-status--warn">{error}</p>}
+
 
       {ready && (
         <div className="report-preview">

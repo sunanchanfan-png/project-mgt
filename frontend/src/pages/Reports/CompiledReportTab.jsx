@@ -65,7 +65,7 @@ function fmtDMY(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-export default function CompiledReportTab({ reportId, reportLabel, project, report, printBarHidden = false, onReportUpdated }) {
+export default function CompiledReportTab({ reportId, reportLabel, project, report, printBarHidden = false, onReportUpdated, onProjectUpdated }) {
   const [progress, setProgress] = useState(null);
   const [itemsByCategory, setItemsByCategory] = useState(null);
   const [nextWeekGroups, setNextWeekGroups] = useState(null);
@@ -79,6 +79,7 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [approving, setApproving] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const printRef = useRef(null);
 
   // ดึงข้อมูล S-Curve จาก Menu 3 Tab 4
@@ -196,6 +197,35 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
       alert(err.response?.data?.error || 'บันทึกสถานะไม่สำเร็จ');
     } finally {
       setApproving(false);
+    }
+  }
+
+  // อัปโหลดไฟล์แผนงาน MS-Project (PDF) — ผูกกับ "โครงการ" ไม่ใช่รายงานฉบับนี้ฉบับเดียว (ดู
+  // migration_019_schedule_pdf.sql) อัปโหลดใหม่ทับของเก่าเสมอ (1 โครงการ = 1 ไฟล์) เสร็จแล้วเรียก
+  // onProjectUpdated() ให้ Reports.jsx โหลด project object ใหม่ (เพื่อให้ project.schedule_pdf_url ที่นี่
+  // อัปเดตตาม และฝั่งแอปลูกค้าเห็นไฟล์ใหม่ในครั้งถัดไปที่กดรีเฟรช/เปิดแอปด้วย)
+  async function handleUploadSchedulePdf(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // เคลียร์ input ทันที กันเลือกไฟล์เดิมซ้ำแล้ว onChange ไม่ทำงาน (browser ไม่ยิง
+    // event ถ้าค่า input ไม่เปลี่ยน)
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      alert('รองรับเฉพาะไฟล์ PDF เท่านั้น');
+      return;
+    }
+    setUploadingPdf(true);
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+      await client.post(`/reports/schedule-pdf?project_id=${project.id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (onProjectUpdated) onProjectUpdated();
+      alert('แนบไฟล์แผนงานเรียบร้อยแล้ว');
+    } catch (err) {
+      alert(err.response?.data?.error || 'อัปโหลดไฟล์ไม่สำเร็จ');
+    } finally {
+      setUploadingPdf(false);
     }
   }
 
@@ -358,6 +388,21 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
             {report?.approval_status === 'approved' ? '✅ อนุมัติแล้ว (ลูกค้าเห็นได้)' : '📝 Draft (ลูกค้ายังไม่เห็น)'}
           </span>
           <div style={{ flex: 1 }} />
+          <label className="btn-secondary btn-secondary--sm" style={{ cursor: uploadingPdf ? 'default' : 'pointer' }}>
+            {uploadingPdf ? 'กำลังอัปโหลด...' : (project?.schedule_pdf_url ? '📎 เปลี่ยนไฟล์แผนงาน' : '📎 แนบไฟล์แผนงาน (PDF)')}
+            <input
+              type="file"
+              accept="application/pdf"
+              hidden
+              disabled={uploadingPdf || !project?.id}
+              onChange={handleUploadSchedulePdf}
+            />
+          </label>
+          {project?.schedule_pdf_url && (
+            <a href={project.schedule_pdf_url} target="_blank" rel="noreferrer" className="btn-secondary btn-secondary--sm">
+              👁️ ดูไฟล์เดิม
+            </a>
+          )}
           <button
             className={report?.approval_status === 'approved' ? 'btn-secondary btn-secondary--sm' : 'btn-primary btn-primary--sm'}
             onClick={handleToggleApproval}
