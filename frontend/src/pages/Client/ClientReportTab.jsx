@@ -11,6 +11,11 @@ import client from '../../api/client';
 import SCurveChart from '../ProjectManagement/SCurveChart';
 import { buildPdfPageImageUrl } from '../../utils/cloudinaryPdf';
 import '../Reports/Reports.css';
+// import CSS ของตัวเอง (ไม่พึ่ง CSS ของหน้าที่เรียกใช้) — สำคัญมาก: component นี้ถูกเรียกใช้จากทั้ง
+// ClientApp.jsx และ ForemanApp.jsx (คนละหน้า คนละ CSS bundle) ถ้าไม่ import เอง หน้าที่ไม่ใช่ ClientApp
+// จะไม่ได้ style ของปุ่ม (client-app__select) เลย เจอบั๊กนี้มาแล้วจริง — ปุ่ม ดูแผนงาน/Print เล่ม/Print แผน
+// ไม่มีพื้นขาว/ขอบมนตอนเปิดจากแอป foreman (ดู pattern เดียวกับที่เจอกับ SCurveChart.jsx มาก่อนหน้านี้)
+import './ClientApp.css';
 
 const CATEGORY_KEYS = ['safety', 'problems', 'additional_work', 'pending'];
 
