@@ -209,7 +209,19 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; }
-    img { display: block; width: 100%; page-break-after: always; }
+    /* บีบรูปให้พอดี "ทั้งความกว้างและความสูง" ของหน้ากระดาษเสมอ (max-width/max-height + width/height:auto
+       ให้ browser เลือกย่อตามด้านที่จำกัดกว่า) — เดิมกำหนดแค่ width:100% อย่างเดียว ถ้าสัดส่วนรูปสูงกว่าที่
+       หน้า A4 แนวนอนรับได้พอดี เนื้อหาส่วนที่เกินความสูงจะล้นไปโผล่เป็นหน้าที่ 2 ทั้งที่ข้อมูลจริงมีแค่ 1 แผ่น */
+    img {
+      display: block;
+      max-width: 100%;
+      max-height: 100vh;
+      width: auto;
+      height: auto;
+      margin: 0 auto;
+      page-break-after: always;
+      page-break-inside: avoid;
+    }
     img:last-child { page-break-after: auto; }
     @page { size: A4 landscape; margin: 10mm; }
   </style>
