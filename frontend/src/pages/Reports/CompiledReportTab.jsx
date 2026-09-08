@@ -183,6 +183,53 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
     }
   }
 
+  // พิมพ์ไฟล์แผนงาน MS-Project แยกต่างหาก (คนละหน้าต่าง คนละเอกสารพิมพ์จากรายงานหลัก) — ลองรวมไว้ในเอกสาร
+  // เดียวกันกับรายงานหลักมาก่อนโดยสลับ orientation เฉพาะบางหน้า (CSS named page) แต่ browser รองรับฟีเจอร์
+  // นี้ไม่เสถียรพอ ใช้งานจริงไม่ได้ผล จึงเปลี่ยนมาใช้วิธีเปิดหน้าต่างพิมพ์แยกแทน (เทคนิคเดียวกับที่
+  // WeeklyProgressTab.jsx/Gantt ใช้พิมพ์ตารางอยู่แล้ว พิสูจน์แล้วว่าทำงานได้จริงเสถียร) หน้าต่างใหม่นี้ตั้ง
+  // @page เป็น landscape ล้วนทั้งเอกสาร (ไม่ต้องสลับ orientation กลางเอกสารเลย เลยไม่มีปัญหาเรื่อง browser
+  // support) — ผลคือได้พิมพ์ 2 รอบแยกกัน (รายงานหลัก + แผนงาน) แทนที่จะรวมเป็นเล่มเดียวกันอัตโนมัติ
+  function handlePrintSchedule() {
+    if (!project?.schedule_pdf_url) return;
+    const pageCount = project.schedule_pdf_pages || 1;
+    const printWindow = window.open('', '_blank', 'width=1100,height=800');
+    if (!printWindow) {
+      alert('เบราว์เซอร์บล็อกการเปิดหน้าต่างพิมพ์ กรุณาอนุญาต pop-up สำหรับเว็บไซต์นี้แล้วลองใหม่');
+      return;
+    }
+    const imagesHtml = Array.from({ length: pageCount }, (_, i) => i + 1)
+      .map((page) => `<img src="${buildPdfPageImageUrl(project.schedule_pdf_url, page)}" />`)
+      .join('\n');
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <title>แผนงาน MS-Project - ${project.project_code}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    img { display: block; width: 100%; page-break-after: always; }
+    img:last-child { page-break-after: auto; }
+    @page { size: A4 landscape; margin: 10mm; }
+  </style>
+</head>
+<body>
+  ${imagesHtml}
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    // รอให้รูปทุกใบโหลดเสร็จก่อนค่อยสั่งพิมพ์ (สำคัญ: ต่างจาก handlePrint หลักที่ไม่ต้องรอ เพราะที่นั่นเนื้อหา
+    // เป็น text/table ล้วน โหลดเสร็จพร้อมกับ DOM ทันที — ที่นี่มีรูปภาพขนาดใหญ่หลายใบ ต้องรอ 'load' event
+    // ของหน้าต่างใหม่จริงๆ ก่อน ไม่งั้นพิมพ์ออกมาจะเจอรูปที่โหลดไม่ทันเป็นช่องว่าง)
+    let printed = false;
+    function triggerOnce() { if (printed) return; printed = true; printWindow.print(); }
+    printWindow.onload = triggerOnce;
+    setTimeout(triggerOnce, 1500);
+    printWindow.addEventListener('afterprint', () => printWindow.close());
+  }
+
   // สลับสถานะ Draft/อนุมัติ — 'approved' เท่านั้นที่จะไปโผล่ในแอปลูกค้า (GET /api/client/reports) ไม่ผูกกับ
   // ว่า week จบหรือยัง กดอนุมัติก่อนวันจบ week ได้เลยตามที่ตกลงกันไว้ — เรียก onReportUpdated() ให้ parent
   // (Reports.jsx) โหลดรายชื่อรายงานใหม่หลังบันทึกสำเร็จ เพื่ออัปเดตสถานะที่ dropdown ด้วย
@@ -411,6 +458,11 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
             >
               👁️ ดูไฟล์เดิม
             </a>
+          )}
+          {project?.schedule_pdf_url && (
+            <button className="btn-secondary btn-secondary--sm" onClick={handlePrintSchedule}>
+              🖨️ พิมพ์แผนงาน
+            </button>
           )}
           <button
             className={report?.approval_status === 'approved' ? 'btn-secondary btn-secondary--sm' : 'btn-primary btn-primary--sm'}

@@ -997,36 +997,6 @@
 }
 
 /* ===== Print Styles — สำหรับพิมพ์เป็น A4 หลายหน้า (ปรับปรุงแล้ว) ===== */
-/* หน้าแผนงาน MS-Project ที่แนบท้ายเล่มรายงาน — โชว์เฉพาะตอนพิมพ์เท่านั้น (ไม่โชว์บนจอปกติ เพราะดูผ่านปุ่ม
-   "ดูไฟล์เดิม" แยกต่างหากอยู่แล้ว การโชว์ซ้ำในพรีวิวแนวตั้งจะขัดกับภาพแนวนอนดูแปลกๆ)
-   ใช้ visibility:hidden + ยุบความสูงเป็น 0 แทน display:none — สำคัญมาก: display:none ทำให้บาง browser
-   "เลื่อนการโหลดรูป" ออกไปก่อน (ถือว่ายังไม่จำเป็นต้องโหลดเพราะไม่ได้แสดงผล) พอถึงตอนพิมพ์จริงแม้จะสั่งให้
-   โชว์แล้วก็ตาม รูปอาจจะยังโหลดไม่เสร็จทัน ทำให้หน้านี้ดูเหมือน "ไม่โผล่มา" เลย — visibility:hidden ต่างจาก
-   display:none ตรงที่ยังคง render/โหลด resource ตามปกติเบื้องหลัง แค่ไม่วาดให้เห็นบนจอเท่านั้น */
-.report-print-page--schedule {
-  visibility: hidden;
-  height: 0;
-  overflow: hidden;
-  margin: 0;
-  padding: 0;
-}
-
-@media print {
-  /* กำหนดหน้ากระดาษแนวนอน (landscape) เฉพาะหน้าแผนงาน MS-Project เท่านั้น — หน้าอื่นๆ ของเล่มรายงานยังเป็น
-     แนวตั้ง (portrait) ตามปกติ ใช้ฟีเจอร์ "named page" ของ CSS (รองรับใน Chrome/Edge ซึ่งเป็น browser หลัก
-     ที่ระบบนี้ใช้งาน) — ตั้ง page: ชื่อเพจ ให้ element นี้ แล้วกำหนด @page ชื่อนั้นแยกจาก @page เริ่มต้น */
-  @page report-schedule-page {
-    size: A4 landscape;
-    margin: 15mm;
-  }
-  .report-print-page--schedule {
-    visibility: visible !important;
-    height: auto !important;
-    overflow: visible !important;
-    page: report-schedule-page;
-  }
-}
-
 @media print {
   /* ซ่อนส่วนที่ไม่ต้องการพิมพ์ */
   .btn-primary,
