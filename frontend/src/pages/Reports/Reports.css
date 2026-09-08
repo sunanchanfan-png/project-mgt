@@ -1008,7 +1008,11 @@
   .app-shell__topbar,
   .app-shell__menu-btn,
   .app-shell__user,
-  .sidebar {
+  .sidebar,
+  .client-app__header,
+  .client-app__user,
+  .client-app__selectors,
+  .client-report-print-hide {
     display: none !important;
   }
 
