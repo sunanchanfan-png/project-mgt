@@ -20,7 +20,7 @@ router.use(verifyToken);
  */
 router.get('/weekly', async (req, res) => {
   try {
-    const { project_id, week } = req.query;
+    const { project_id, week, as_of: asOfParam } = req.query;
     if (!project_id) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
     // endpoint เดียวรองรับ 2 Tab (งานสัปดาห์นี้/หน้า) แยกกันด้วย query param — เช็คสิทธิ์ตาม Tab จริงที่
     // กำลังขอ ไม่ใช่เช็คแบบเหมารวม
@@ -39,7 +39,10 @@ router.get('/weekly', async (req, res) => {
     let end;
     let thisWeekRange = null;
     if (contractStart) {
-      const today = fmtISO(new Date());
+      // as_of: ใช้ตอนเรียกจาก Tab9 "เล่มรายงาน" — ส่ง week_end ของรายงานฉบับนั้นมาแทน "วันนี้จริง" เพื่อ
+      // ให้ได้สัปดาห์เดียวกับตอนที่สร้างรายงานฉบับนั้นเป๊ะ ไม่ขยับตามวันที่ปัจจุบันอีกต่อไป (ดูคอมเมนต์
+      // เดียวกันที่ /overall ด้านบน)
+      const today = asOfParam ? fmtISO(new Date(asOfParam)) : fmtISO(new Date());
       const currentWeekNum = getProjectWeekNumber(contractStart, today);
       const targetWeekNum = currentWeekNum + offsetWeeks;
       ({ start, end } = getProjectWeekBoundaries(contractStart, targetWeekNum));
@@ -112,9 +115,12 @@ router.get('/weekly', async (req, res) => {
  */
 router.get('/overall', requirePermission('project_management', 'overall'), async (req, res) => {
   try {
-    const { project_id, level1_id } = req.query;
+    const { project_id, level1_id, as_of: asOfParam } = req.query;
     if (!project_id) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
-    const today = fmtISO(new Date());
+    // as_of: ใช้ตอนเรียกจาก Tab9 "เล่มรายงาน" (ทั้งฝั่ง staff และ client) เพื่อ freeze ตัวเลขไว้ ณ
+    // week_end ของรายงานฉบับที่กำลังดูอยู่ — ไม่งั้นรายงานเก่าจะโชว์ตัวเลข ณ "วันนี้จริง" ผิดเพี้ยนไปเรื่อยๆ
+    // ทุกครั้งที่เปิดดูซ้ำ (ไม่ส่งมา = พฤติกรรมเดิมทุกประการ ใช้ที่ Menu 3 "จัดการโครงการ" ปกติ)
+    const today = asOfParam ? fmtISO(new Date(asOfParam)) : fmtISO(new Date());
     const yesterday = fmtISO(new Date(new Date(today).getTime() - MS_PER_DAY));
 
     let flat = await getFlatWbsTree(project_id);
@@ -159,7 +165,7 @@ router.get('/overall', requirePermission('project_management', 'overall'), async
  */
 router.get('/scurve', async (req, res) => {
   try {
-    const { project_id, level1_id } = req.query;
+    const { project_id, level1_id, as_of: asOfParam } = req.query;
     if (!project_id) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
     // endpoint เดียวรองรับ 2 Tab (Main S-Curve ไม่ระบุ level1_id / Group S-Curve ระบุ level1_id) — เช็ค
     // สิทธิ์ตาม Tab จริงที่กำลังขอ
@@ -182,8 +188,9 @@ router.get('/scurve', async (req, res) => {
       if (a.start_date < minDate) minDate = a.start_date;
       if (a.end_date > maxDate) maxDate = a.end_date;
     });
-    // ลากเส้นต่อไปถึงวันนี้ด้วย ถ้าวันนี้เลยวันจบแผนไปแล้ว (จะได้เห็น actual ล่าสุดต่อเนื่อง)
-    const today = fmtISO(new Date());
+    // ลากเส้นต่อไปถึงวันนี้ด้วย ถ้าวันนี้เลยวันจบแผนไปแล้ว (จะได้เห็น actual ล่าสุดต่อเนื่อง) — หรือถ้าเรียก
+    // มาจาก Tab9 พร้อม as_of ให้ freeze ทั้งกราฟไว้ ณ วันนั้นแทน (ดูคอมเมนต์ที่ /overall ด้านบน)
+    const today = asOfParam ? fmtISO(new Date(asOfParam)) : fmtISO(new Date());
     if (today > maxDate) maxDate = today;
 
     const level3Ids = withDates.map((a) => a.id);

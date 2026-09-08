@@ -75,35 +75,37 @@ export default function ClientReportTab({ projectId, project, reportId, report }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ดึงข้อมูล S-Curve จาก Menu 3 Tab 4
+  // ดึงข้อมูล S-Curve จาก Menu 3 Tab 4 — ส่ง as_of=report.week_end เสมอ เพื่อ freeze กราฟไว้ ณ วันจบสัปดาห์
+  // ของรายงานฉบับที่กำลังดูอยู่ (ไม่งั้นรายงานเก่าจะขยับตามวันที่ปัจจุบันไปเรื่อยๆ ทุกครั้งที่เปิดดูซ้ำ)
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || !report?.week_end) return;
     setScurveLoading(true);
-    client.get('/client/scurve', { params: { project_id: projectId } })
+    client.get('/client/scurve', { params: { project_id: projectId, as_of: report.week_end } })
       .then((res) => setScurveData(res.data))
       .catch((err) => console.error('ดึง S-Curve ไม่สำเร็จ:', err))
       .finally(() => setScurveLoading(false));
-  }, [projectId]);
+  }, [projectId, report?.week_end]);
 
-  // ดึงข้อมูลงานสัปดาห์นี้ สำหรับตาราง "กิจกรรมงานที่ทำในรอบสัปดาห์นี้"
+  // ดึงข้อมูลงานสัปดาห์นี้ สำหรับตาราง "กิจกรรมงานที่ทำในรอบสัปดาห์นี้" — as_of=report.week_end ทำให้
+  // "สัปดาห์นี้" หมายถึง "สัปดาห์ของรายงานฉบับนี้" เสมอ ไม่ใช่สัปดาห์ปัจจุบันจริง
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || !report?.week_end) return;
     setWeeklyLoading(true);
-    client.get('/client/weekly', { params: { project_id: projectId, week: 'this' } })
+    client.get('/client/weekly', { params: { project_id: projectId, week: 'this', as_of: report.week_end } })
       .then((res) => setWeeklyData(res.data))
       .catch((err) => console.error('ดึงงานสัปดาห์นี้ไม่สำเร็จ:', err))
       .finally(() => setWeeklyLoading(false));
-  }, [projectId]);
+  }, [projectId, report?.week_end]);
 
-  // ดึงข้อมูลตารางงานรวม สำหรับ "ตารางสรุปปริมาณงานและผลงานรวมทั้งโครงการ"
+  // ดึงข้อมูลตารางงานรวม สำหรับ "ตารางสรุปปริมาณงานและผลงานรวมทั้งโครงการ" — as_of=report.week_end
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || !report?.week_end) return;
     setOverallLoading(true);
-    client.get('/client/overall', { params: { project_id: projectId } })
+    client.get('/client/overall', { params: { project_id: projectId, as_of: report.week_end } })
       .then((res) => setOverallData(res.data))
       .catch((err) => console.error('ดึงตารางงานรวมไม่สำเร็จ:', err))
       .finally(() => setOverallLoading(false));
-  }, [projectId]);
+  }, [projectId, report?.week_end]);
 
   useEffect(() => {
     if (!reportId) return;

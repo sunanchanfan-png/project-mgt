@@ -128,7 +128,7 @@ router.get(
   (req, res, next) => requireClientTab(req.query.week === 'next' ? 'next-week' : 'this-week')(req, res, next),
   async (req, res) => {
     try {
-      const { project_id, week } = req.query;
+      const { project_id, week, as_of: asOfParam } = req.query;
       const offsetWeeks = week === 'next' ? 1 : 0;
 
       const projectResult = await query('SELECT contract_start FROM project_mgt.projects WHERE id = $1', [project_id]);
@@ -138,7 +138,10 @@ router.get(
       let end;
       let thisWeekRange = null;
       if (contractStart) {
-        const today = fmtISO(new Date());
+        // as_of: ใช้ตอนเรียกจาก ClientReportTab.jsx (Tab "เล่มรายงาน") ส่ง week_end ของรายงานฉบับนั้นมา
+        // แทน "วันนี้จริง" เพื่อ freeze ให้ตรงกับสัปดาห์ของรายงานฉบับนั้นเป๊ะ — ไม่ส่งมา (ตอนเรียกจาก Tab
+        // "งานสัปดาห์นี้/หน้า" ปกติ) ยังคงเป็นค่าปัจจุบันจริงเหมือนเดิมทุกประการ
+        const today = asOfParam ? fmtISO(new Date(asOfParam)) : fmtISO(new Date());
         const currentWeekNum = getProjectWeekNumber(contractStart, today);
         const targetWeekNum = currentWeekNum + offsetWeeks;
         ({ start, end } = getProjectWeekBoundaries(contractStart, targetWeekNum));
@@ -197,7 +200,7 @@ router.get(
  */
 router.get('/scurve', requireClientTab('scurve'), requireProjectAccess, async (req, res) => {
   try {
-    const { project_id } = req.query;
+    const { project_id, as_of: asOfParam } = req.query;
     const flat = await getFlatWbsTree(project_id);
     const withDates = flat.filter((a) => a.start_date && a.end_date);
     if (withDates.length === 0) return res.json({ points: [], today: null });
@@ -210,7 +213,9 @@ router.get('/scurve', requireClientTab('scurve'), requireProjectAccess, async (r
       if (a.start_date < minDate) minDate = a.start_date;
       if (a.end_date > maxDate) maxDate = a.end_date;
     });
-    const today = fmtISO(new Date());
+    // as_of: ใช้ตอนเรียกจาก ClientReportTab.jsx (Tab "เล่มรายงาน") ส่ง week_end ของรายงานฉบับนั้นมาแทน
+    // "วันนี้จริง" เพื่อ freeze กราฟทั้งเส้นไว้ ณ วันนั้น — ไม่ส่งมา (Tab S-Curve ปกติ) ยังคงเป็นปัจจุบันจริง
+    const today = asOfParam ? fmtISO(new Date(asOfParam)) : fmtISO(new Date());
     if (today > maxDate) maxDate = today;
 
     const level3Ids = withDates.map((a) => a.id);
@@ -288,8 +293,10 @@ router.get('/scurve', requireClientTab('scurve'), requireProjectAccess, async (r
  */
 router.get('/overall', requireClientTab('full-report'), requireProjectAccess, async (req, res) => {
   try {
-    const { project_id } = req.query;
-    const today = fmtISO(new Date());
+    const { project_id, as_of: asOfParam } = req.query;
+    // as_of: ส่ง week_end ของรายงานฉบับที่กำลังดูมาเสมอจาก ClientReportTab.jsx (endpoint นี้ใช้แค่ที่เดียว
+    // คือ Tab เล่มรายงาน ไม่มี Tab อื่นเรียกซ้ำ) เพื่อ freeze ตารางไว้ ณ วันนั้น ไม่ขยับตามวันที่ปัจจุบัน
+    const today = asOfParam ? fmtISO(new Date(asOfParam)) : fmtISO(new Date());
     const yesterday = fmtISO(new Date(new Date(today).getTime() - MS_PER_DAY));
 
     const flat = await getFlatWbsTree(project_id);

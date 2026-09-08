@@ -83,11 +83,12 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const printRef = useRef(null);
 
-  // ดึงข้อมูล S-Curve จาก Menu 3 Tab 4
+  // ดึงข้อมูล S-Curve จาก Menu 3 Tab 4 — ส่ง as_of=report.week_end เสมอ เพื่อ freeze กราฟไว้ ณ วันจบสัปดาห์
+  // ของรายงานฉบับที่กำลังดูอยู่ (ไม่งั้นรายงานเก่าจะขยับตามวันที่ปัจจุบันไปเรื่อยๆ ทุกครั้งที่เปิดดูซ้ำ)
   useEffect(() => {
-    if (!project?.id) return;
+    if (!project?.id || !report?.week_end) return;
     setScurveLoading(true);
-    client.get('/progress/scurve', { params: { project_id: project.id } })
+    client.get('/progress/scurve', { params: { project_id: project.id, as_of: report.week_end } })
       .then((res) => {
         setScurveData(res.data);
       })
@@ -95,13 +96,14 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
         console.error('ดึง S-Curve ไม่สำเร็จ:', err);
       })
       .finally(() => setScurveLoading(false));
-  }, [project?.id]);
+  }, [project?.id, report?.week_end]);
 
-  // ดึงข้อมูลงานสัปดาห์นี้ (Tab 1) สำหรับตาราง "กิจกรรมงานที่ทำในรอบสัปดาห์นี้"
+  // ดึงข้อมูลงานสัปดาห์นี้ (Tab 1) สำหรับตาราง "กิจกรรมงานที่ทำในรอบสัปดาห์นี้" — as_of=report.week_end
+  // ทำให้ "สัปดาห์นี้" หมายถึง "สัปดาห์ของรายงานฉบับนี้" เสมอ ไม่ใช่สัปดาห์ปัจจุบันจริง
   useEffect(() => {
-    if (!project?.id) return;
+    if (!project?.id || !report?.week_end) return;
     setWeeklyLoading(true);
-    client.get('/progress/weekly', { params: { project_id: project.id, week: 'this' } })
+    client.get('/progress/weekly', { params: { project_id: project.id, week: 'this', as_of: report.week_end } })
       .then((res) => {
         setWeeklyData(res.data);
       })
@@ -109,13 +111,13 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
         console.error('ดึงงานสัปดาห์นี้ไม่สำเร็จ:', err);
       })
       .finally(() => setWeeklyLoading(false));
-  }, [project?.id]);
+  }, [project?.id, report?.week_end]);
 
-  // ดึงข้อมูลตารางงานรวม (Tab 3) สำหรับ "ตารางสรุปปริมาณงานและผลงานรวมทั้งโครงการ"
+  // ดึงข้อมูลตารางงานรวม (Tab 3) สำหรับ "ตารางสรุปปริมาณงานและผลงานรวมทั้งโครงการ" — as_of=report.week_end
   useEffect(() => {
-    if (!project?.id) return;
+    if (!project?.id || !report?.week_end) return;
     setOverallLoading(true);
-    client.get('/progress/overall', { params: { project_id: project.id } })
+    client.get('/progress/overall', { params: { project_id: project.id, as_of: report.week_end } })
       .then((res) => {
         setOverallData(res.data);
       })
@@ -123,7 +125,7 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
         console.error('ดึงตารางงานรวมไม่สำเร็จ:', err);
       })
       .finally(() => setOverallLoading(false));
-  }, [project?.id]);
+  }, [project?.id, report?.week_end]);
 
   useEffect(() => {
     setLoading(true);
