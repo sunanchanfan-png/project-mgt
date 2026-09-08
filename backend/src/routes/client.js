@@ -31,16 +31,21 @@ const { getReportProgressData } = require('./reports');
 
 const router = express.Router();
 router.use(verifyToken);
-// เฉพาะ role='client' เท่านั้น (system_mgr ผ่านเสมอตามดีไซน์เดิมของ requireRole — ใช้ debug/พรีวิวได้)
-router.use(requireRole('client'));
+// role='client' ปกติ + role='foreman' (ให้ดูเล่มรายงานแบบเดียวกับ client ได้โดยไม่ต้องตั้งสิทธิ์ tab/ผูก
+// โครงการเพิ่มเหมือน client — foreman เป็นพนักงานภายในที่เห็นทุกโครงการที่เปิดอยู่แล้วตามปกติ ดู bypass ที่
+// requireClientTab/requireProjectAccess ด้านล่างประกอบ) + system_mgr ผ่านเสมอตามดีไซน์เดิมของ requireRole
+router.use(requireRole('client', 'foreman'));
 
 const CLIENT_MENU_KEY = 'client-app';
 
 /**
  * เช็คว่า user มีสิทธิ์เข้า Tab นี้ในแอปลูกค้าหรือไม่ (admin/system_mgr ผ่านเสมอจาก hasPermission เดิม)
+ * foreman ผ่านเสมอด้วย (ไม่ต้องมีแถว user_permissions menu_key='client-app' เลยสักแถว) — ต่างจาก client
+ * ที่ต้องให้ system_mgr ติ๊กเลือก Tab ให้ทีละคนผ่านหน้าอนุมัติสิทธิ์
  */
 function requireClientTab(tabKey) {
   return async (req, res, next) => {
+    if (req.user.role === 'foreman') return next();
     if (!(await hasPermission(req.user, CLIENT_MENU_KEY, tabKey))) {
       return res.status(403).json({ error: 'คุณไม่มีสิทธิ์เข้าถึงส่วนนี้ กรุณาติดต่อผู้ดูแลระบบ' });
     }
@@ -53,7 +58,9 @@ function requireClientTab(tabKey) {
  * requireClientTab (อันนั้นคุม "เข้า Tab ไหนได้บ้าง", อันนี้คุม "เห็นโครงการไหนได้บ้าง")
  * รองรับ project_id จาก query string ตรงๆ หรือ resolve จาก report id (req.params.id) กรณี endpoint
  * ที่ผูกกับ reportId แทน project_id ตรงๆ (เหมือน /reports/:id/... ของ Menu 5)
- * system_mgr/admin ข้ามการเช็คนี้เสมอ (เผื่อ debug/พรีวิวแทนลูกค้าได้โดยไม่ต้องมีแถวผูกโครงการ)
+ * system_mgr/admin/foreman ข้ามการเช็คนี้เสมอ (foreman เห็นได้ทุกโครงการที่เปิดอยู่อยู่แล้วตามปกติ ไม่ต้อง
+ * มีแถวผูกโครงการแบบ client — ระบบ client_project_access นี้มีไว้คุม "ลูกค้าภายนอก" คนละกลุ่มเป้าหมาย)
+ * ยังคงเช็ค approval_status ต่อสำหรับ foreman เหมือน client ทุกประการ (เห็นเฉพาะรายงานที่อนุมัติแล้ว)
  */
 async function requireProjectAccess(req, res, next) {
   if (req.user.role === 'admin' || req.user.role === 'system_mgr') return next();
@@ -65,14 +72,16 @@ async function requireProjectAccess(req, res, next) {
         [req.params.id]
       );
       if (reportResult.rows.length === 0) return res.status(404).json({ error: 'ไม่พบรายงานนี้' });
-      // รายงานที่ยังไม่อนุมัติ (draft) ห้าม client เข้าดูเด็ดขาด แม้จะพิมพ์ report id ตรงๆ เอง (เผื่อเดา id
-      // ถูก) — GET /client/reports (list) กรองออกไปแล้วชั้นหนึ่ง แต่เช็คซ้ำที่นี่อีกชั้นเป็น defense in depth
+      // รายงานที่ยังไม่อนุมัติ (draft) ห้ามเข้าดูเด็ดขาด แม้จะพิมพ์ report id ตรงๆ เอง (เผื่อเดา id ถูก) —
+      // ใช้กับทั้ง client และ foreman เหมือนกัน (ตามที่ตกลงกันไว้ "เล่มรายงานเหมือน client ทุกประการ")
       if (reportResult.rows[0].approval_status !== 'approved') {
         return res.status(403).json({ error: 'รายงานฉบับนี้ยังไม่ได้เผยแพร่ กรุณาติดต่อผู้ดูแลโครงการ' });
       }
       projectId = reportResult.rows[0].project_id;
     }
     if (!projectId) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
+
+    if (req.user.role === 'foreman') return next();
 
     const accessResult = await query(
       'SELECT 1 FROM project_mgt.client_project_access WHERE user_id = $1 AND project_id = $2',
