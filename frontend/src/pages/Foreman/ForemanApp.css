@@ -36,8 +36,15 @@
 .foreman-app__selectors {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 6px;
+  padding: 8px 16px 6px;
+}
+
+/* เหตุผลเดียวกับ .client-app .progress-table-wrap ใน ClientApp.css — ลบ margin-top ซ้ำซ้อนของเนื้อหา
+   Tab เล่มรายงาน (ClientReportTab.jsx ที่ ForemanApp เอามาใช้ซ้ำ) เฉพาะในบริบทหน้านี้ ให้ระยะห่างเท่ากัน
+   ทุกแถวตั้งแต่แถวเลือกโครงการไปจนถึงแถวดูแผนงาน/Print */
+.foreman-app .progress-table-wrap {
+  margin-top: 0;
 }
 
 .foreman-app__select {

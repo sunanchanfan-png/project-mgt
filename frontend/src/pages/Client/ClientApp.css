@@ -37,7 +37,16 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 8px 16px 6px;
+}
+
+/* เนื้อหา Tab (โดยเฉพาะเล่มรายงาน — ClientReportTab.jsx) ปกติมี margin-top ของตัวเอง (.progress-table-wrap
+   จาก Reports.css) มาบวกซ้ำกับ padding-bottom ด้านบนอีกที ทำให้ช่องว่างจาก "แถวเลือกโครงการ/รายงาน/Tab"
+   ไปยัง "แถวดูแผนงาน/Print" ห่างกว่าช่องว่างระหว่างแถวอื่นๆ ข้างบน (6px) — ลบทิ้งเฉพาะในบริบทหน้านี้ ให้
+   ระยะห่างเท่ากันทุกแถวจริงๆ (ไม่แตะ .progress-table-wrap ตรงๆ เพราะใช้ร่วมกับหน้าอื่น เช่น Reports.jsx
+   ฝั่ง staff ที่ยังต้องการระยะห่างเดิมอยู่) */
+.client-app .progress-table-wrap {
+  margin-top: 0;
 }
 
 .client-app__select {
