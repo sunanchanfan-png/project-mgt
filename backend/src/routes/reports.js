@@ -383,6 +383,24 @@ router.get('/:id/progress-full', requirePermission('reports', 'plan-progress'), 
 });
 
 /**
+ * GET /api/reports/:id/remarks
+ * รายการคำอธิบายทั้งหมดที่เคยพิมพ์ไว้ในรายงานฉบับนี้ (ทุกแถว WBS) — ใช้ prefill popup กรอกความคืบหน้าที่
+ * Menu 3 "การจัดการโครงการ" Tab งานสัปดาห์นี้ (ดึงครั้งเดียวทั้งชุด ไม่ใช่ทีละแถว ประหยัด round-trip)
+ */
+router.get('/:id/remarks', requirePermission('reports', 'plan-progress'), async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT wbs_level, wbs_id, remark FROM project_mgt.report_progress_remarks WHERE report_id = $1',
+      [req.params.id]
+    );
+    res.json({ remarks: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'ดึงคำอธิบายไม่สำเร็จ' });
+  }
+});
+
+/**
  * PUT /api/reports/:id/remarks
  * body: { wbs_level: 'level1'|'level2'|'level3', wbs_id, remark }
  * บันทึกคำอธิบายต่อแถว WBS แถวหนึ่ง (upsert) — พิมพ์ค่าว่างเปล่า = ลบคำอธิบายนั้นทิ้ง

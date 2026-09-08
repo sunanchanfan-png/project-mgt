@@ -188,6 +188,15 @@
 .progress-table__row--l2 .progress-table__label-col { padding-left: 24px; }
 .progress-table__row--l3 .progress-table__label-col { padding-left: 40px; }
 
+/* แถวที่กดแล้วเปิด popup กรอก %/รูป/รายละเอียดงานได้ (Tab งานสัปดาห์นี้เท่านั้น) — ให้เห็นชัดว่ากดได้ */
+.progress-table__row--clickable {
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.progress-table__row--clickable:hover td {
+  background: var(--bg);
+}
+
 .progress-table__input {
   width: 70px;
   padding: 4px 6px;
