@@ -1,5 +1,5 @@
 // src/pages/ProjectData/ProjectData.jsx
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../../components/Layout';
 import WbsLevel1Modal from './WbsLevel1Modal';
 import WbsLevel2Modal from './WbsLevel2Modal';
@@ -135,32 +135,42 @@ export default function ProjectData() {
     });
   }, [projectId]);
 
+  // ป้องกัน race condition แบบเดียวกับ Tab 3 (ดูคอมเมนต์ที่ level3RequestIdRef ด้านล่าง) — เผื่อสลับ
+  // โครงการเร็วๆ แล้วคำขอเก่าตอบกลับช้ากว่าคำขอใหม่
+  const level2RequestIdRef = useRef(0);
+
   async function fetchLevel2Single(level1Id) {
+    const requestId = (level2RequestIdRef.current += 1);
     setLevel2Loading(true);
     try {
       const res = await client.get('/wbs-level2', { params: { level1_id: level1Id } });
+      if (level2RequestIdRef.current !== requestId) return;
       setLevel2Group(res.data.group);
       setLevel2Items(res.data.items);
       setLevel2Totals(res.data.totals);
       setLevel2Complete(res.data.is_complete);
       setLevel2Error('');
     } catch (err) {
+      if (level2RequestIdRef.current !== requestId) return;
       setLevel2Error('ดึงข้อมูลไม่สำเร็จ');
     } finally {
-      setLevel2Loading(false);
+      if (level2RequestIdRef.current === requestId) setLevel2Loading(false);
     }
   }
 
   async function fetchLevel2All(pid) {
+    const requestId = (level2RequestIdRef.current += 1);
     setLevel2Loading(true);
     try {
       const res = await client.get('/wbs-level2/by-project', { params: { project_id: pid } });
+      if (level2RequestIdRef.current !== requestId) return;
       setAllGroupsData(res.data);
       setLevel2Error('');
     } catch (err) {
+      if (level2RequestIdRef.current !== requestId) return;
       setLevel2Error('ดึงข้อมูลไม่สำเร็จ');
     } finally {
-      setLevel2Loading(false);
+      if (level2RequestIdRef.current === requestId) setLevel2Loading(false);
     }
   }
 
@@ -298,7 +308,17 @@ export default function ProjectData() {
     }
   }, [level1List]);
 
+  // ป้องกัน race condition ตอนสลับโครงการเร็วๆ: fetchLevel3Data ของโครงการ "เก่า" (โดยเฉพาะกรณี
+  // level2Id === ALL_VALUE ที่ยิงหลาย request พร้อมกันด้วย Promise.all ถ้าโครงการเก่ามีรายการงานเยอะ) อาจ
+  // ตอบกลับมา "ช้ากว่า" คำขอของโครงการใหม่ที่ข้อมูลน้อยกว่า/ว่างเปล่า — ถ้าไม่กันไว้ ผลลัพธ์เก่าจะมาถึงทีหลัง
+  // แล้วเขียนทับผลลัพธ์ใหม่ที่ถูกต้องอยู่แล้ว ทำให้ตารางโชว์ข้อมูลโครงการเก่าค้างอยู่ทั้งที่ dropdown filter
+  // ข้างบนแสดงถูกต้องแล้วก็ตาม — ใช้ ref เก็บ "หมายเลขคำขอล่าสุด" ก่อนเริ่ม fetch ทุกครั้ง แล้วเช็คตอนได้
+  // ผลลัพธ์กลับมาว่ายังเป็นคำขอล่าสุดจริงไหม ก่อนจะ setState ทับ (ถ้าไม่ใช่ = มีคำขอใหม่กว่าแซงไปแล้ว ทิ้ง
+  // ผลลัพธ์นี้ไปเงียบๆ)
+  const level3RequestIdRef = useRef(0);
+
   async function fetchLevel3Data(level2Id) {
+    const requestId = (level3RequestIdRef.current += 1);
     if (!level2Id) {
       setLevel3Item2Info(null);
       setLevel3Items([]);
@@ -317,6 +337,7 @@ export default function ProjectData() {
             client.get('/wbs-level3', { params: { level2_id: it.id } }).then((res) => ({ it, res }))
           )
         );
+        if (level3RequestIdRef.current !== requestId) return; // มีคำขอใหม่กว่าแซงไปแล้ว ทิ้งผลลัพธ์นี้
         const merged = results.flatMap(({ it, res }) =>
           (res.data.items || []).map((row) => ({ ...row, level2_code: it.code, level2_name: it.name }))
         );
@@ -328,15 +349,17 @@ export default function ProjectData() {
         return;
       }
       const res = await client.get('/wbs-level3', { params: { level2_id: level2Id } });
+      if (level3RequestIdRef.current !== requestId) return; // มีคำขอใหม่กว่าแซงไปแล้ว ทิ้งผลลัพธ์นี้
       setLevel3Item2Info(res.data.item2);
       setLevel3Items(res.data.items);
       setLevel3Totals(res.data.totals);
       setLevel3Complete(res.data.is_complete);
       setLevel3Error('');
     } catch (err) {
+      if (level3RequestIdRef.current !== requestId) return;
       setLevel3Error('ดึงข้อมูลไม่สำเร็จ');
     } finally {
-      setLevel3Loading(false);
+      if (level3RequestIdRef.current === requestId) setLevel3Loading(false);
     }
   }
 
