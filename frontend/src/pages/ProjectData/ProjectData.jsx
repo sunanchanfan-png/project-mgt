@@ -189,6 +189,15 @@ export default function ProjectData() {
     // ไว้ด้วยเพื่อบังคับให้ดึงข้อมูลใหม่ทุกครั้งที่เปลี่ยนโครงการ ไม่ว่าค่า filter จะเปลี่ยนหรือไม่ก็ตาม
   }, [selectedLevel1Id, projectId]);
 
+  // ดึงข้อมูลใหม่ทุกครั้งที่ "สลับกลับเข้า" Tab นี้ด้วย — เหตุผลเดียวกับ Tab 3 (กิจกรรมงาน) ด้านล่าง: ถ้าไป
+  // แก้ที่ Tab Gantt แล้วกด Save แล้วสลับกลับมาโดยไม่แตะ dropdown filter เลย ข้อมูลจะค้างจากก่อนไป Gantt
+  useEffect(() => {
+    if (activeTab !== 'item' || !selectedLevel1Id) return;
+    if (selectedLevel1Id === ALL_VALUE) fetchLevel2All(projectId);
+    else fetchLevel2Single(selectedLevel1Id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   function openCreateModal() {
     setEditingItem(null);
     setModalOpen(true);
@@ -364,6 +373,16 @@ export default function ProjectData() {
   }
 
   useEffect(() => { fetchLevel3Data(activityLevel2Id); }, [activityLevel2Id]);
+
+  // ดึงข้อมูลใหม่ทุกครั้งที่ "สลับกลับเข้า" Tab นี้ด้วย (ไม่ใช่แค่ตอน dropdown filter เปลี่ยน) — สำคัญมาก:
+  // ถ้าผู้ใช้ไปแก้วันที่ที่ Tab Gantt แล้วกด Save แล้วสลับกลับมา Tab นี้ โดยไม่ได้แตะ dropdown filter เลย
+  // (activityLevel2Id ค่าเดิมไม่เปลี่ยน) effect ด้านบนจะไม่ทำงานซ้ำ ทำให้ตารางยังโชว์วันที่/ข้อมูลเก่าที่
+  // โหลดค้างไว้ตั้งแต่ก่อนไป Gantt ทั้งที่ฐานข้อมูลอัปเดตถูกต้องแล้ว — ใส่ activeTab เข้า dependency แทน
+  // เพื่อบังคับให้ดึงใหม่ทุกครั้งที่กลับเข้ามาดู Tab นี้
+  useEffect(() => {
+    if (activeTab === 'activity' && activityLevel2Id) fetchLevel3Data(activityLevel2Id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   function openLevel3Create() {
     setLevel3EditingItem(null);
