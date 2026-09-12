@@ -173,7 +173,11 @@ export default function ProjectData() {
     if (!selectedLevel1Id) return;
     if (selectedLevel1Id === ALL_VALUE) fetchLevel2All(projectId);
     else fetchLevel2Single(selectedLevel1Id);
-  }, [selectedLevel1Id]);
+    // เพิ่ม projectId เข้า dependency ด้วย (ไม่ใช่แค่ selectedLevel1Id) — สำคัญมาก: ถ้าสลับโครงการแล้ว
+    // filter บังเอิญเป็น "ทั้งหมด" อยู่แล้วทั้งคู่ (ค่าเริ่มต้นปกติ) ค่า selectedLevel1Id จะไม่เปลี่ยนเลย
+    // (ยังเป็น ALL_VALUE เหมือนเดิม) effect นี้จะไม่ทำงานซ้ำ ทำให้ข้อมูลค้างจากโครงการเก่า ต้องใส่ projectId
+    // ไว้ด้วยเพื่อบังคับให้ดึงข้อมูลใหม่ทุกครั้งที่เปลี่ยนโครงการ ไม่ว่าค่า filter จะเปลี่ยนหรือไม่ก็ตาม
+  }, [selectedLevel1Id, projectId]);
 
   function openCreateModal() {
     setEditingItem(null);
@@ -240,6 +244,16 @@ export default function ProjectData() {
   // ตัวเดียวกับที่ Tab รายการงานใช้ทำ "-ทั้งหมด-" อยู่แล้ว) พร้อมติด code ของกลุ่มงานไว้ให้แยกแยะได้
   // ทั้ง 2 dropdown default เป็น "-ทั้งหมด-" เสมอ (ตามที่ตกลง) — และมี .catch() ทุกจุด กัน promise
   // ที่พังเงียบๆ ไม่มีการจัดการ error ทำให้ state ค้าง/แอปพังทั้งหน้าโดยไม่มี error message ให้เห็น
+  // รีเซ็ต filter ของ Tab 3 (กิจกรรมงาน) กลับเป็นค่าว่างทุกครั้งที่เปลี่ยนโครงการ — สำคัญมาก: ถ้าไม่รีเซ็ต
+  // แล้ว activityGroupId ที่เคยเลือกไว้ (เป็น id เฉพาะของกลุ่มงานในโครงการเก่า ไม่ใช่ "ทั้งหมด") จะค้างอยู่
+  // และไปเรียก wbs-level2 ด้วย id ของโครงการเก่าที่ไม่มีอยู่ในโครงการใหม่ (ได้ข้อมูลว่าง/error แทนที่จะโชว์
+  // ภาพรวมโครงการใหม่ทันที) — ตั้งเป็นค่าว่างแล้วปล่อยให้ effect ด้านล่าง (auto-select "ทั้งหมด" เมื่อ
+  // level1List โหลดเสร็จ) ทำงานใหม่ทั้งหมดสำหรับโครงการใหม่
+  useEffect(() => {
+    setActivityGroupId('');
+    setActivityLevel2Id('');
+  }, [projectId]);
+
   useEffect(() => {
     if (!activityGroupId) {
       setActivityLevel2List([]);
@@ -272,7 +286,10 @@ export default function ProjectData() {
         setActivityLevel2Id('');
         setLevel3Error('ดึงข้อมูลรายการงานไม่สำเร็จ');
       });
-  }, [activityGroupId]);
+    // เพิ่ม projectId เข้า dependency ด้วย (เหตุผลเดียวกับ Tab 2 ด้านบน) — กันกรณี activityGroupId บังเอิญ
+    // เป็น ALL_VALUE อยู่แล้วทั้งคู่ตอนสลับโครงการ (ถึงจะรีเซ็ตเป็น '' ไปแล้วข้างบน แต่ effect auto-select
+    // อาจตั้งกลับเป็น ALL_VALUE เร็วมากจนค่าดู "ไม่เปลี่ยน" ในบางจังหวะ — ใส่ไว้เป็น safety net อีกชั้น)
+  }, [activityGroupId, projectId]);
 
   // ตั้งค่ากลุ่มงานเป็น "-ทั้งหมด-" อัตโนมัติเมื่อโหลด level1List เสร็จ (เปิด Tab นี้มาให้เห็นภาพรวมทันที)
   useEffect(() => {
