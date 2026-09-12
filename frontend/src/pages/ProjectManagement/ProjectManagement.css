@@ -188,6 +188,16 @@
 .progress-table__row--l2 .progress-table__label-col { padding-left: 24px; }
 .progress-table__row--l3 .progress-table__label-col { padding-left: 40px; }
 
+/* กิจกรรมงานที่เลยแผนมาแล้ว (ตามแผนควรเสร็จ 100% แล้ว) แต่ทำจริงยังไม่ครบ — เตือนด้วยสีแดง ใช้ใน Tab
+   "งานสัปดาห์นี้" (WeeklyProgressTab.jsx) เพื่อให้เห็นชัดว่างานไหนล่าช้าต้องเร่งตาม แม้ช่วงวันตามแผนจะผ่าน
+   ไปแล้วก็ยังโผล่ใน list ต่อเนื่องจนกว่าจะทำเสร็จจริง (ไม่ให้หลุดหายไปจากสายตา) */
+.progress-table__row--delayed td {
+  color: var(--danger, #c0392b) !important;
+}
+.progress-table__row--delayed.progress-table__row--clickable:hover td {
+  background: #fdecea;
+}
+
 /* แถวที่กดแล้วเปิด popup กรอก %/รูป/รายละเอียดงานได้ (Tab งานสัปดาห์นี้เท่านั้น) — ให้เห็นชัดว่ากดได้ */
 .progress-table__row--clickable {
   cursor: pointer;

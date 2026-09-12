@@ -342,11 +342,12 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
                 return (
                   <tr
                     key={`act-${act.id}`}
-                    className={`progress-table__row progress-table__row--l3 ${canEditHere ? 'progress-table__row--clickable' : ''}`}
+                    className={`progress-table__row progress-table__row--l3 ${canEditHere ? 'progress-table__row--clickable' : ''} ${act.is_delayed ? 'progress-table__row--delayed' : ''}`}
                     onClick={canEditHere ? () => openEditModal(act) : undefined}
                     title={canEditHere ? 'กดเพื่อกรอก %/รูปถ่าย/รายละเอียดงาน' : undefined}
                   >
                     <td className="progress-table__label-col">
+                      {act.is_delayed && <span title="เลยแผนมาแล้ว ยังทำไม่ครบ 100%">⚠️ </span>}
                       {act.code} {act.name}
                       {hasRemark && <span title="มีรายละเอียดงานแล้ว"> 📝</span>}
                     </td>

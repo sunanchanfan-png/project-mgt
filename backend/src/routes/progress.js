@@ -55,6 +55,21 @@ router.get('/weekly', async (req, res) => {
     const flat = await getFlatWbsTree(project_id);
     const inWeek = flat.filter((a) => dateRangesOverlap(a.start_date, a.end_date, start, end));
 
+    // เพิ่มกิจกรรมงานที่ "เลยแผนมาแล้วแต่ยังไม่จบ 100%" เข้าไปใน list ของ Tab "งานสัปดาห์นี้" ด้วย (เฉพาะ
+    // Tab นี้เท่านั้น ไม่ใช่ Tab "งานสัปดาห์หน้า") — คือกิจกรรมที่ตามแผนควรจบไปแล้วตั้งแต่ก่อนสัปดาห์นี้เริ่ม
+    // (end_date < start ของสัปดาห์นี้) แต่ทำจริงยังไม่ครบ 100% ให้โผล่เตือนต่อเนื่องทุกสัปดาห์จนกว่าจะทำเสร็จ
+    // จริง ไม่งั้นงานที่ล่าช้าจะ "หลุดหายไปจากสายตา" ทันทีที่ช่วงวันตามแผนผ่านไปแล้ว (ทั้งที่ยังไม่เสร็จจริง)
+    let overdueExtra = [];
+    if (week !== 'next') {
+      const inWeekIds = new Set(inWeek.map((a) => a.id));
+      const candidates = flat.filter((a) => a.end_date && a.end_date < start && !inWeekIds.has(a.id));
+      if (candidates.length > 0) {
+        const candidateActualMap = await getLatestActualMap(candidates.map((a) => a.id), end);
+        overdueExtra = candidates.filter((a) => (candidateActualMap.get(a.id) || 0) < 100);
+      }
+    }
+    const allActivities = [...inWeek, ...overdueExtra];
+
     // ถ้าเป็น Tab "งานสัปดาห์หน้า" ต้องรู้ด้วยว่ากิจกรรมงานไหน "ก็โผล่ในสัปดาห์นี้อยู่แล้วด้วย" (ช่วงวันที่
     // ทับซ้อนกับสัปดาห์นี้เช่นกัน) — รายการที่ซ้ำแบบนี้ให้แก้ไขได้แค่จาก Tab สัปดาห์นี้เท่านั้น (ทำเร็วกว่าแผน
     // ก็ใส่ % ที่ Tab สัปดาห์นี้ได้เลย) ส่วนใน Tab สัปดาห์หน้าจะแสดงไว้ให้ดูอย่างเดียว ไม่ให้แก้ไขซ้ำ กันข้อมูล
@@ -66,7 +81,7 @@ router.get('/weekly', async (req, res) => {
       );
     }
 
-    const level3Ids = inWeek.map((a) => a.id);
+    const level3Ids = allActivities.map((a) => a.id);
     // "ก่อนหน้า" = actual ล่าสุด ณ ก่อนวันเริ่มสัปดาห์ที่กำลังดูอยู่ (1 วันก่อนวันเริ่มสัปดาห์นั้น)
     // สำหรับ Tab งานสัปดาห์หน้า ค่านี้จะเท่ากับ "ผลรวมสะสม ณ สิ้นสุดสัปดาห์นี้" โดยธรรมชาติอยู่แล้ว
     // (เพราะ 1 วันก่อนสัปดาห์หน้าเริ่ม = วันสุดท้ายของสัปดาห์นี้พอดี) ไม่ต้องคำนวณแยกเป็นกรณีพิเศษเลย
@@ -79,18 +94,24 @@ router.get('/weekly', async (req, res) => {
     // asOfDate เดียวกับ currentMap เพื่อให้ดึงรูปของ entry เดียวกับที่ใช้กำหนด actual_percent ปัจจุบัน)
     const photosMap = await getLatestPhotosMap(level3Ids, end);
 
-    const withProgress = inWeek
+    const withProgress = allActivities
       .map((a) => {
         const isOverlap = alsoInThisWeekIds.has(a.id);
         const previous = previousMap.get(a.id) || 0;
         const current = currentMap.has(a.id) ? currentMap.get(a.id) : previous;
+        const plan = computePlanPercent(a.start_date, a.end_date, end);
         return {
           ...a,
-          plan_percent: computePlanPercent(a.start_date, a.end_date, end),
+          plan_percent: plan,
           previous_percent: previous,
           actual_percent: current,
           also_in_this_week: isOverlap,
           photos: photosMap.get(a.id) || [],
+          // ตามแผนควรเสร็จ 100% ไปแล้ว ณ สิ้นสุดสัปดาห์นี้ (plan_percent เต็ม 100 แปลว่าช่วงวันที่ตามแผน
+          // จบไปแล้วก่อนหรือเท่ากับวันสิ้นสุดสัปดาห์ที่ดูอยู่) แต่ทำจริงยังไม่ครบ — ให้ frontend ใช้ flag นี้
+          // ทำสีแดงเตือนว่า "เลยแผนมาแล้ว" (ครอบคลุมทั้งกิจกรรมที่ปกติอยู่ในสัปดาห์นี้อยู่แล้วแต่ดันช้า และ
+          // กิจกรรมที่ดึงเพิ่มมาจาก overdueExtra ด้านบนซึ่งช่วงวันตามแผนผ่านไปนานแล้วด้วย)
+          is_delayed: plan >= 100 && current < 100,
         };
       })
       // งานที่เสร็จ 100% แล้ว ไม่ต้องโชว์ใน Tab รายสัปดาห์อีก (ไปโชว์รวมทีเดียวใน Tab ตารางงานรวมแทน)

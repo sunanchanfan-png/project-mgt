@@ -297,6 +297,7 @@ function buildProgressTree(flatWithProgress) {
         previous_percent: a.previous_percent,
         actual_percent: a.actual_percent,
         also_in_this_week: a.also_in_this_week,
+        is_delayed: a.is_delayed,
         photos: a.photos,
       }));
       return {
