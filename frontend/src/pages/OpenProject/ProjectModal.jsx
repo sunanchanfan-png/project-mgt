@@ -51,25 +51,31 @@ function formatNumberDisplay(raw) {
 
 export default function ProjectModal({ project, onClose, onSaved }) {
   const isEdit = Boolean(project);
-  const [form, setForm] = useState(() =>
-    isEdit
-      ? {
-          name: project.name || '',
-          client_name: project.client_name || '',
-          description: project.description || '',
-          contract_number: project.contract_number || '',
-          contract_start: toDateInputValue(project.contract_start),
-          contract_end: toDateInputValue(project.contract_end),
-          budget_total: project.budget_total || '',
-          duration_days: project.duration_days || '',
-          contact_person: project.contact_person || '',
-          contact_phone: project.contact_phone || '',
-          supervisor_name: project.supervisor_name || '',
-          supervisor_phone: project.supervisor_phone || '',
-          status: project.status || 'on',
-        }
-      : EMPTY_FORM
-  );
+  const [form, setForm] = useState(() => {
+    if (!isEdit) return EMPTY_FORM;
+    const start = toDateInputValue(project.contract_start);
+    const end = toDateInputValue(project.contract_end);
+    // คำนวณระยะเวลาจาก "วันที่จริง" เสมอเมื่อมีครบทั้งคู่ — ไม่ใช้ค่า duration_days ที่เคยบันทึกไว้ในฐาน
+    // ข้อมูลตรงๆ (เดิมใช้ `project.duration_days || ''` มีบั๊ก 2 ชั้น: (1) ถ้าเคยบันทึกไว้ไม่ตรงกับช่วง
+    // วันที่จริง จะโชว์ตัวเลขผิดค้างไว้ ต้องให้ผู้ใช้ไปกดแก้วันที่เองก่อนถึงจะคำนวณใหม่ให้ (2) `0 || ''`
+    // ทำให้ค่า 0 (falsy ใน JS) กลายเป็นช่องว่างเปล่าโดยไม่ตั้งใจ ทั้งที่ 0 เป็นตัวเลขที่ถูกต้องแล้ว)
+    const computedDuration = (start && end) ? String(countDaysInclusive(start, end)) : '';
+    return {
+      name: project.name || '',
+      client_name: project.client_name || '',
+      description: project.description || '',
+      contract_number: project.contract_number || '',
+      contract_start: start,
+      contract_end: end,
+      budget_total: project.budget_total || '',
+      duration_days: computedDuration || (project.duration_days ?? ''),
+      contact_person: project.contact_person || '',
+      contact_phone: project.contact_phone || '',
+      supervisor_name: project.supervisor_name || '',
+      supervisor_phone: project.supervisor_phone || '',
+      status: project.status || 'on',
+    };
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -95,9 +101,18 @@ export default function ProjectModal({ project, onClose, onSaved }) {
     setSaving(true);
     setError('');
     try {
+      // แปลงค่าว่างเป็น null ก่อนส่งเสมอ (กันไว้อีกชั้นนอกจากที่ backend กันให้แล้ว) — ช่องวันที่/ตัวเลขถ้า
+      // ส่งเป็น '' ไปตรงๆ จะทำให้ query ฝั่ง backend พังได้ถ้ามีจุดไหนลืมกันไว้ในอนาคต
+      const payload = {
+        ...form,
+        contract_start: form.contract_start || null,
+        contract_end: form.contract_end || null,
+        duration_days: form.duration_days === '' ? null : form.duration_days,
+        budget_total: form.budget_total === '' ? null : form.budget_total,
+      };
       const res = isEdit
-        ? await client.put(`/projects/${project.id}`, form)
-        : await client.post('/projects', form);
+        ? await client.put(`/projects/${project.id}`, payload)
+        : await client.post('/projects', payload);
       onSaved(res.data.project); // ปิด popup อัตโนมัติทำที่ parent (handleSaved)
     } catch (err) {
       setError(err.response?.data?.error || 'บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');

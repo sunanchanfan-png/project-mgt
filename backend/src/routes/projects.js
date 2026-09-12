@@ -146,6 +146,16 @@ router.put('/:id', requirePermission('open_project'), requireRole('admin', 'pm')
       supervisor_name, supervisor_phone, status, budget_total,
     } = req.body;
 
+    // สำคัญ: ต้องแปลงค่าว่าง ('') เป็น null ก่อนส่งเข้า query เสมอ สำหรับช่องวันที่/ตัวเลข — ต่างจากช่อง
+    // ข้อความทั่วไปตรงที่ Postgres จะ error ทันทีถ้าพยายามแปลง '' เป็น DATE/INTEGER/NUMERIC (ไม่ใช่แค่เก็บ
+    // เป็นค่าว่างเฉยๆ เหมือนช่องข้อความ) ทำให้ query ทั้งก้อนพังและ "แก้ไขไม่สำเร็จ" ทั้งที่ผู้ใช้แค่ลบเลข
+    // ในช่องระยะเวลา/วันที่ทิ้งไปเฉยๆ (endpoint POST สร้างโครงการใหม่กันจุดนี้ไว้อยู่แล้ว แต่ PUT นี้ลืมทำ
+    // ตอนเขียนไว้แต่แรก — เพิ่งพบบั๊กนี้จากการรายงานปัญหา "แก้ไขโปรเจกต์ไม่สำเร็จ")
+    const contractStartVal = contract_start || null;
+    const contractEndVal = contract_end || null;
+    const durationDaysVal = duration_days === '' || duration_days === undefined ? null : duration_days;
+    const budgetTotalVal = budget_total === '' || budget_total === undefined ? null : budget_total;
+
     const result = await query(
       `UPDATE project_mgt.projects
        SET name = COALESCE($1, name),
@@ -164,9 +174,9 @@ router.put('/:id', requirePermission('open_project'), requireRole('admin', 'pm')
            updated_at = NOW()
        WHERE id = $14
        RETURNING *`,
-      [name, client_name, description, contract_number, contract_start,
-        contract_end, duration_days, contact_person, contact_phone, supervisor_name,
-        supervisor_phone, status, budget_total, req.params.id]
+      [name, client_name, description, contract_number, contractStartVal,
+        contractEndVal, durationDaysVal, contact_person, contact_phone, supervisor_name,
+        supervisor_phone, status, budgetTotalVal, req.params.id]
     );
 
     if (result.rows.length === 0) {
