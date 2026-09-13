@@ -369,12 +369,22 @@ router.post('/entries', requireRole('admin', 'pm', 'foreman'), async (req, res) 
     if (!allowedTabs.some(Boolean)) {
       return res.status(403).json({ error: 'คุณไม่มีสิทธิ์เข้าถึงส่วนนี้ กรุณาติดต่อผู้ดูแลระบบ' });
     }
-    const { wbs_level3_id, actual_percent, note, photo_urls } = req.body;
+    const { wbs_level3_id, actual_percent, note, photo_urls, entry_date: requestedEntryDate } = req.body;
     if (!wbs_level3_id || actual_percent === undefined || actual_percent === null) {
       return res.status(400).json({ error: 'กรุณาระบุกิจกรรมงาน และ % ความคืบหน้า' });
     }
     const pct = Math.min(100, Math.max(0, parseFloat(actual_percent) || 0));
-    const entryDate = fmtISO(new Date());
+    const today = fmtISO(new Date());
+    // "กรอกข้อมูลย้อนหลัง" — เฉพาะ admin/system_mgr เท่านั้นที่ระบุวันที่เองได้ (pm/foreman ยังคงบันทึกด้วย
+    // วันนี้จริงตามนาฬิกาเซิร์ฟเวอร์เท่านั้นเหมือนเดิมทุกประการ ป้องกันการพิมพ์ entry_date มั่วจาก client
+    // ที่ไม่มีสิทธิ์) ห้ามระบุวันที่ในอนาคตเด็ดขาด (backdate ได้อย่างเดียว ไม่ใช่ postdate)
+    let entryDate = today;
+    if (requestedEntryDate && (req.user.role === 'admin' || req.user.role === 'system_mgr')) {
+      if (requestedEntryDate > today) {
+        return res.status(400).json({ error: 'ระบุวันที่ในอนาคตไม่ได้ (backdate ย้อนหลังได้อย่างเดียว)' });
+      }
+      entryDate = requestedEntryDate;
+    }
 
     const existingResult = await query(
       `SELECT id FROM project_mgt.progress_entries WHERE wbs_level3_id = $1 AND entry_date = $2 LIMIT 1`,

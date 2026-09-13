@@ -9,7 +9,7 @@ const express = require('express');
 const multer = require('multer');
 const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, HeadingLevel, AlignmentType, WidthType, BorderStyle, ShadingType } = require('docx');
 const { query } = require('../db');
-const { verifyToken, requirePermission, hasPermission } = require('../middleware/auth');
+const { verifyToken, requirePermission, hasPermission, requireRole } = require('../middleware/auth');
 const { uploadBuffer, isConfigured } = require('../lib/cloudinary');
 const {
   fmtISO, toUTCDate, MS_PER_DAY, getFlatWbsTree, getLatestActualMap, buildProgressTree, computePlanPercent,
@@ -125,6 +125,35 @@ router.get('/current', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'เตรียมรายงานสัปดาห์ปัจจุบันไม่สำเร็จ' });
+  }
+});
+
+/**
+ * GET /api/reports/for-date?project_id=X&date=YYYY-MM-DD
+ * หา/สร้างรายงานของ "สัปดาห์ที่มีวันที่นี้อยู่" ของโครงการ — ใช้เฉพาะฟีเจอร์ "กรอกข้อมูลย้อนหลัง" (Menu 3
+ * Tab งานสัปดาห์นี้ ตอนเลือกวันที่ย้อนหลัง) เพื่อผูก "รายละเอียดงาน" (remark) เข้ากับรายงานฉบับที่ตรงกับ
+ * สัปดาห์ของวันที่นั้นจริงๆ ไม่ใช่รายงานสัปดาห์ปัจจุบัน — เฉพาะ admin/system_mgr เท่านั้น (คู่กับ
+ * POST /progress/entries ที่อนุญาตให้ backdate ได้เฉพาะ 2 role นี้เหมือนกัน)
+ */
+router.get('/for-date', requireRole('admin', 'system_mgr'), async (req, res) => {
+  try {
+    const { project_id, date } = req.query;
+    if (!project_id || !date) return res.status(400).json({ error: 'กรุณาระบุ project_id และ date' });
+
+    const projectResult = await query('SELECT contract_start FROM project_mgt.projects WHERE id = $1', [project_id]);
+    if (projectResult.rows.length === 0) return res.status(404).json({ error: 'ไม่พบโครงการนี้' });
+    if (!projectResult.rows[0].contract_start) {
+      return res.status(400).json({ error: 'โครงการนี้ยังไม่ได้กรอกวันเริ่มสัญญา (contract_start)' });
+    }
+    const contractStart = fmtISO(new Date(projectResult.rows[0].contract_start));
+    const weekNumber = getProjectWeekNumber(contractStart, date);
+    const { start, end } = getProjectWeekBoundaries(contractStart, weekNumber);
+
+    const report = await ensureReportForWeek(project_id, start, end, weekNumber, req.user.id);
+    res.json({ report });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'เตรียมรายงานของสัปดาห์นี้ไม่สำเร็จ' });
   }
 });
 
