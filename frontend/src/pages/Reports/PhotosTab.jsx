@@ -15,6 +15,8 @@ export default function PhotosTab({ reportId }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [busyPhotoId, setBusyPhotoId] = useState(null); // กันกดรัว/กดซ้ำระหว่างรอ request ค้าง
+  // ตัวรูปที่กำลังลาก (photo_id) — ใช้ทำ highlight ตอนลากผ่าน + ใช้ตอน drop เพื่อรู้ว่าลากตัวไหนมาวาง
+  const [draggingPhotoId, setDraggingPhotoId] = useState(null);
 
   function fetchAll() {
     setLoading(true);
@@ -58,6 +60,63 @@ export default function PhotosTab({ reportId }) {
     }
   }
 
+  // ลบรูปทิ้งถาวร (ต่างจาก toggleSelectJE ที่แค่เลือก/ยกเลิกเข้ารายงานฉบับนี้) — รูปนี้เก็บอยู่แหล่งเดียวกับ
+  // Menu3 (Tab งานสัปดาห์นี้) ลบที่นี่จะหายไปจาก Menu3 ด้วยทันที ไม่ได้แยกชุดกัน จึงมีแค่ปุ่มลบเดียวพอ
+  async function deletePhotoJE(photo) {
+    if (!window.confirm('ยืนยันลบรูปนี้ทิ้งถาวร? (จะหายไปจากทุกที่ รวมถึง Tab งานสัปดาห์นี้ที่ Menu 3 ด้วย)')) return;
+    setBusyPhotoId(photo.photo_id);
+    try {
+      await client.delete(`/reports/photos/${photo.photo_id}`);
+      fetchAll();
+    } catch (err) {
+      alert(err.response?.data?.error || 'ลบรูปไม่สำเร็จ');
+    } finally {
+      setBusyPhotoId(null);
+    }
+  }
+
+  // ===== ลากรูป (drag & drop) สลับลำดับได้อิสระ — ใช้ HTML5 drag & drop มาตรฐาน ทำงานได้เฉพาะเมาส์
+  // (คลิกค้างแล้วลาก) บนคอมพิวเตอร์เท่านั้น — มือถือ/แท็บเล็ตยังไม่มีทางสลับลำดับได้ในตอนนี้ (ตัดปุ่มลูกศร
+  // ◀▶ ที่เคยเป็นทางเลือกสำรองออกไปแล้วตามที่ตกลงกันไว้) ใช้ได้เฉพาะรูปที่ "เลือกแล้ว" เท่านั้น ลากข้าม
+  // กิจกรรมงานอื่นไม่ได้ (ไม่มีความหมาย เพราะลำดับผูกกับกิจกรรมงานเดียวเท่านั้น)
+  function handleDragStart(photo) {
+    setDraggingPhotoId(photo.photo_id);
+  }
+
+  function handleDragEnd() {
+    setDraggingPhotoId(null);
+  }
+
+  async function handleDropJE(group, targetPhoto) {
+    const draggedId = draggingPhotoId;
+    setDraggingPhotoId(null);
+    if (!draggedId || draggedId === targetPhoto.photo_id) return;
+
+    const selectedPhotos = group.photos.filter((p) => p.selection_id);
+    const draggedPhoto = selectedPhotos.find((p) => p.photo_id === draggedId);
+    // ลากมาจากรูปที่ "ยังไม่ได้เลือก" หรือวางบนรูปที่ "ยังไม่ได้เลือก" ก็ไม่ต้องทำอะไร (ไม่มีลำดับให้จัด)
+    if (!draggedPhoto || !targetPhoto.selection_id) return;
+
+    // จัดลำดับใหม่: เอา draggedPhoto ออกจากตำแหน่งเดิม แล้วแทรกไว้ตรงตำแหน่งของ targetPhoto แทน
+    const withoutDragged = selectedPhotos.filter((p) => p.photo_id !== draggedId);
+    const targetIndex = withoutDragged.findIndex((p) => p.photo_id === targetPhoto.photo_id);
+    withoutDragged.splice(targetIndex, 0, draggedPhoto);
+    const newSelectionIds = withoutDragged.map((p) => p.selection_id);
+
+    setBusyPhotoId(draggedId);
+    try {
+      await client.put(`/reports/${reportId}/photos/reorder`, {
+        wbs_level3_id: group.wbs_level3_id,
+        selection_ids: newSelectionIds,
+      });
+      fetchAll();
+    } catch (err) {
+      alert(err.response?.data?.error || 'จัดลำดับไม่สำเร็จ');
+    } finally {
+      setBusyPhotoId(null);
+    }
+  }
+
   // คอลัมน์ 2 (ความปลอดภัย) — คลิกรูปเพื่อเลือก/ยกเลิก เข้าเล่มรายงาน
   async function toggleSelectItemPhoto(category, photo) {
     setBusyPhotoId(photo.id);
@@ -67,6 +126,21 @@ export default function PhotosTab({ reportId }) {
       fetchAll();
     } catch (err) {
       alert(err.response?.data?.error || 'ดำเนินการไม่สำเร็จ');
+    } finally {
+      setBusyPhotoId(null);
+    }
+  }
+
+  // ลบรูปความปลอดภัยทิ้งถาวร — endpoint นี้มีอยู่แล้วในระบบ (ใช้จาก Tab ความปลอดภัยเดิม) แค่เพิ่มปุ่มเรียก
+  // ใช้จากตรงนี้ด้วยเพื่อความสะดวก (ลบรูปได้จากศูนย์รวมรูปถ่ายนี้จุดเดียว ไม่ต้องย้อนกลับไป Tab ความปลอดภัย)
+  async function deletePhotoItem(category, photo) {
+    if (!window.confirm('ยืนยันลบรูปนี้ทิ้งถาวร?')) return;
+    setBusyPhotoId(photo.id);
+    try {
+      await client.delete(`/reports/items/photos/${photo.id}`, { params: { category } });
+      fetchAll();
+    } catch (err) {
+      alert(err.response?.data?.error || 'ลบรูปไม่สำเร็จ');
     } finally {
       setBusyPhotoId(null);
     }
@@ -121,17 +195,37 @@ export default function PhotosTab({ reportId }) {
                     {group.photos.map((photo) => {
                       const isSelected = Boolean(photo.selection_id);
                       const isBusy = busyPhotoId === photo.photo_id;
+                      const isDragging = draggingPhotoId === photo.photo_id;
                       return (
-                        <button
+                        <div
                           key={photo.photo_id}
-                          type="button"
-                          className={`photos-thumb-btn ${isSelected ? 'photos-thumb-btn--selected' : ''}`}
-                          onClick={() => toggleSelectJE(group, photo)}
-                          disabled={isBusy}
+                          className={`photos-thumb-wrap ${isDragging ? 'photos-thumb-wrap--dragging' : ''}`}
+                          draggable={isSelected}
+                          onDragStart={() => handleDragStart(photo)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={(e) => { if (isSelected) e.preventDefault(); }}
+                          onDrop={(e) => { e.preventDefault(); handleDropJE(group, photo); }}
                         >
-                          <img src={photo.photo_url} alt="" className="photos-thumb-btn__img" />
-                          {isSelected && <span className="photos-thumb-btn__badge">✓</span>}
-                        </button>
+                          <button
+                            type="button"
+                            className={`photos-thumb-btn ${isSelected ? 'photos-thumb-btn--selected' : ''}`}
+                            onClick={() => toggleSelectJE(group, photo)}
+                            disabled={isBusy}
+                          >
+                            <img src={photo.photo_url} alt="" className="photos-thumb-btn__img" />
+                            {isSelected && <span className="photos-thumb-btn__badge">✓</span>}
+                            {isSelected && <span className="photos-thumb-btn__drag-hint">✋ ลากเพื่อสลับที่</span>}
+                          </button>
+                          <button
+                            type="button"
+                            className="photos-thumb-btn__delete"
+                            onClick={(e) => { e.stopPropagation(); deletePhotoJE(photo); }}
+                            disabled={isBusy}
+                            title="ลบรูปนี้ทิ้งถาวร"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -165,17 +259,27 @@ export default function PhotosTab({ reportId }) {
                           const isSelected = photo.selected !== false;
                           const isBusy = busyPhotoId === photo.id;
                           return (
-                            <button
-                              key={photo.id}
-                              type="button"
-                              className={`photos-thumb-btn ${isSelected ? 'photos-thumb-btn--selected' : ''}`}
-                              onClick={() => toggleSelectItemPhoto('safety', photo)}
-                              disabled={isBusy}
-                              title={itemGroup.item_content}
-                            >
-                              <img src={photo.url} alt={itemGroup.item_content || 'รูป'} className="photos-thumb-btn__img" />
-                              {isSelected && <span className="photos-thumb-btn__badge">✓</span>}
-                            </button>
+                            <div key={photo.id} className="photos-thumb-wrap">
+                              <button
+                                type="button"
+                                className={`photos-thumb-btn ${isSelected ? 'photos-thumb-btn--selected' : ''}`}
+                                onClick={() => toggleSelectItemPhoto('safety', photo)}
+                                disabled={isBusy}
+                                title={itemGroup.item_content}
+                              >
+                                <img src={photo.url} alt={itemGroup.item_content || 'รูป'} className="photos-thumb-btn__img" />
+                                {isSelected && <span className="photos-thumb-btn__badge">✓</span>}
+                              </button>
+                              <button
+                                type="button"
+                                className="photos-thumb-btn__delete"
+                                onClick={(e) => { e.stopPropagation(); deletePhotoItem('safety', photo); }}
+                                disabled={isBusy}
+                                title="ลบรูปนี้ทิ้งถาวร"
+                              >
+                                ✕
+                              </button>
+                            </div>
                           );
                         })}
                       </div>

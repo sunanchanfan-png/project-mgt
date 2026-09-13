@@ -743,7 +743,7 @@ router.get('/:id/photos', requirePermission('reports', 'photos'), async (req, re
     const photosResult = await query(
       `SELECT pp.id AS photo_id, pp.photo_url, pe.wbs_level3_id, pe.entry_date,
               wl3.code AS activity_code, wl3.name AS activity_name,
-              sel.id AS selection_id
+              sel.id AS selection_id, sel.sort_order
        FROM project_mgt.progress_photos pp
        JOIN project_mgt.progress_entries pe ON pe.id = pp.progress_entry_id
        JOIN project_mgt.wbs_level3 wl3 ON wl3.id = pe.wbs_level3_id
@@ -752,7 +752,7 @@ router.get('/:id/photos', requirePermission('reports', 'photos'), async (req, re
        LEFT JOIN project_mgt.report_photo_selections sel
          ON sel.progress_photo_id = pp.id AND sel.report_id = $1
        WHERE wl1.project_id = $2 AND pe.entry_date BETWEEN $3 AND $4
-       ORDER BY wl3.id, pe.entry_date DESC, pp.id DESC`,
+       ORDER BY wl3.id, (sel.id IS NULL), sel.sort_order, pe.entry_date DESC, pp.id DESC`,
       [req.params.id, report.project_id, report.week_start, report.week_end]
     );
 
@@ -772,6 +772,7 @@ router.get('/:id/photos', requirePermission('reports', 'photos'), async (req, re
         photo_url: row.photo_url,
         entry_date: row.entry_date,
         selection_id: row.selection_id,
+        sort_order: row.sort_order,
       });
     });
 
@@ -846,6 +847,105 @@ router.delete('/photos/select/:selectionId', requirePermission('reports', 'photo
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'ยกเลิกไม่สำเร็จ' });
+  }
+});
+
+/**
+ * DELETE /api/reports/photos/:photoId
+ * ลบรูปถ่ายทิ้งถาวร (photoId = progress_photos.id) — ต่างจาก DELETE /photos/select/:selectionId ด้านบน
+ * ตรงที่อันนี้ลบรูปจริงออกจากระบบทั้งหมด ไม่ใช่แค่เอาออกจากรายงานฉบับนี้ฉบับเดียว — มีผลกับทุกที่ที่เคย
+ * อ้างอิงรูปนี้ รวมถึง Tab งานสัปดาห์นี้ (Menu 3) ที่แนบรูปนี้ไว้ตอนกรอกความคืบหน้าด้วย เพราะรูปเก็บไว้
+ * แหล่งเดียว (progress_photos) ไม่ได้แยกชุดกันระหว่าง Menu 3/Menu 5 — ลบที่นี่ = หายไปทุกที่ทันที
+ * (report_photo_selections ที่เคยอ้างอิงรูปนี้ถูกลบตามไปด้วยอัตโนมัติผ่าน ON DELETE CASCADE ของ schema)
+ */
+router.delete('/photos/:photoId', requirePermission('reports', 'photos'), async (req, res) => {
+  try {
+    const result = await query(
+      'DELETE FROM project_mgt.progress_photos WHERE id = $1 RETURNING id',
+      [req.params.photoId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'ไม่พบรูปนี้' });
+    res.json({ message: 'ลบรูปเรียบร้อยแล้ว' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'ลบรูปไม่สำเร็จ' });
+  }
+});
+
+/**
+ * PUT /api/reports/photos/select/:selectionId/move
+ * body: { direction: 'left' | 'right' }
+ * สลับลำดับรูปที่เลือกไว้แล้ว กับรูปที่อยู่ "ติดกัน" ในกิจกรรมงานเดียวกัน (ลำดับนี้คือลำดับที่จะไปโผล่ใน
+ * เล่มรายงานจริงทั้งพรีวิวบนจอและไฟล์ Word ที่ดาวน์โหลด — ทั้งคู่เรียงตาม sort_order นี้แล้ว) สลับด้วยการ
+ * "สลับค่า sort_order กัน" ระหว่าง 2 แถวที่ติดกัน ไม่ใช่ shift ทั้งชุด (ง่ายและปลอดภัยกว่า)
+ */
+router.put('/photos/select/:selectionId/move', requirePermission('reports', 'photos'), async (req, res) => {
+  try {
+    const { direction } = req.body;
+    if (!['left', 'right'].includes(direction)) {
+      return res.status(400).json({ error: "direction ต้องเป็น 'left' หรือ 'right' เท่านั้น" });
+    }
+    const currentResult = await query(
+      'SELECT id, report_id, wbs_level3_id, sort_order FROM project_mgt.report_photo_selections WHERE id = $1',
+      [req.params.selectionId]
+    );
+    if (currentResult.rows.length === 0) return res.status(404).json({ error: 'ไม่พบรายการที่เลือกไว้นี้' });
+    const current = currentResult.rows[0];
+
+    // หา "เพื่อนบ้าน" ที่ติดกันของกิจกรรมงานเดียวกัน (sort_order น้อยกว่า/มากกว่าที่ใกล้ที่สุด)
+    const neighborResult = await query(
+      `SELECT id, sort_order FROM project_mgt.report_photo_selections
+       WHERE report_id = $1 AND wbs_level3_id = $2 AND sort_order ${direction === 'left' ? '<' : '>'} $3
+       ORDER BY sort_order ${direction === 'left' ? 'DESC' : 'ASC'}
+       LIMIT 1`,
+      [current.report_id, current.wbs_level3_id, current.sort_order]
+    );
+    if (neighborResult.rows.length === 0) {
+      return res.json({ message: 'อยู่ที่ขอบสุดแล้ว ไม่มีอะไรให้สลับ' }); // อยู่ซ้ายสุด/ขวาสุดแล้ว เงียบไว้เฉยๆ ไม่ต้อง error
+    }
+    const neighbor = neighborResult.rows[0];
+
+    await query('UPDATE project_mgt.report_photo_selections SET sort_order = $1 WHERE id = $2', [neighbor.sort_order, current.id]);
+    await query('UPDATE project_mgt.report_photo_selections SET sort_order = $1 WHERE id = $2', [current.sort_order, neighbor.id]);
+
+    res.json({ message: 'สลับลำดับเรียบร้อยแล้ว' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'สลับลำดับไม่สำเร็จ' });
+  }
+});
+
+/**
+ * PUT /api/reports/:id/photos/reorder
+ * body: { wbs_level3_id, selection_ids: [id1, id2, id3, ...] }
+ * จัดลำดับรูปที่เลือกไว้ทั้งชุดใหม่ทีเดียว (แทนที่ selection_ids เดิมด้วยลำดับที่ส่งมา) — ใช้กับการลากรูป
+ * (drag & drop) ที่ผู้ใช้ลากไปวางตำแหน่งไหนก็ได้อย่างอิสระ ต่างจาก /move ด้านบนที่สลับได้แค่กับตัวติดกัน
+ * เท่านั้น — selection_ids ต้องเป็นของกิจกรรมงาน (wbs_level3_id) และรายงาน (id) เดียวกันเท่านั้น (เช็คก่อน
+ * ทุกครั้ง กันส่ง id ของกิจกรรมงาน/รายงานอื่นมาปนโดยไม่ตั้งใจ)
+ */
+router.put('/:id/photos/reorder', requirePermission('reports', 'photos'), async (req, res) => {
+  try {
+    const { wbs_level3_id, selection_ids: selectionIds } = req.body;
+    if (!wbs_level3_id || !Array.isArray(selectionIds) || selectionIds.length === 0) {
+      return res.status(400).json({ error: 'ข้อมูลไม่ครบ (wbs_level3_id, selection_ids)' });
+    }
+    // เช็คว่าทุก id ที่ส่งมาเป็นของรายงาน+กิจกรรมงานนี้จริงๆ ก่อน กันแก้ลำดับของคนอื่น/กิจกรรมงานอื่นเข้ามา
+    const checkResult = await query(
+      `SELECT id FROM project_mgt.report_photo_selections
+       WHERE report_id = $1 AND wbs_level3_id = $2 AND id = ANY($3::int[])`,
+      [req.params.id, wbs_level3_id, selectionIds]
+    );
+    if (checkResult.rows.length !== selectionIds.length) {
+      return res.status(400).json({ error: 'รายการที่ส่งมาไม่ตรงกับรายงาน/กิจกรรมงานนี้' });
+    }
+    for (let i = 0; i < selectionIds.length; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await query('UPDATE project_mgt.report_photo_selections SET sort_order = $1 WHERE id = $2', [i + 1, selectionIds[i]]);
+    }
+    res.json({ message: 'จัดลำดับเรียบร้อยแล้ว' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'จัดลำดับไม่สำเร็จ' });
   }
 });
 

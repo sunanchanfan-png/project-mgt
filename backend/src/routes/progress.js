@@ -101,13 +101,17 @@ router.get('/weekly', async (req, res) => {
       }
     }
 
-    // เพิ่มกิจกรรมงานที่ "มีการบันทึกความคืบหน้าจริงเกิดขึ้นในสัปดาห์นี้" เข้ามาด้วย แม้ช่วงวันที่ตามแผนของ
-    // กิจกรรมงานนั้นจะไม่ครอบคลุมสัปดาห์นี้เลยก็ตาม — สำคัญมากสำหรับฟีเจอร์ "กรอกข้อมูลย้อนหลัง": ถ้า admin
-    // ย้อนไปกรอกข้อมูลให้สัปดาห์เก่าที่ผ่านมาแล้ว แต่ช่วงวันตามแผนของกิจกรรมงานนั้นไม่ตรงกับสัปดาห์ที่กรอก
-    // ย้อนหลังไป (เช่น กิจกรรมงานเสร็จเร็ว/ช้ากว่าแผนที่ตั้งไว้ตอนแรก) ระบบเดิมจะไม่เอามาแสดงใน "กิจกรรมงานที่
-    // ทำในรอบสัปดาห์นี้" ของเล่มรายงานเลย ทั้งที่บันทึกไว้แล้วจริงๆ (ตรวจสอบจาก entry_date ตรงๆ ไม่ใช่ช่วงวัน
-    // ตามแผน) เฉพาะ week==='this' เท่านั้น (ไม่ใช้กับ Tab สัปดาห์หน้าซึ่งเป็นแค่การวางแผนล่วงหน้า ยังไม่มี
-    // การบันทึกจริงเกิดขึ้นได้อยู่แล้ว)
+    // เพิ่มกิจกรรมงานที่ "มีความคืบหน้าเพิ่มขึ้นจริงในสัปดาห์นี้" เข้ามาด้วย แม้ช่วงวันที่ตามแผนของกิจกรรมงาน
+    // นั้นจะไม่ครอบคลุมสัปดาห์นี้เลยก็ตาม — สำคัญมากสำหรับฟีเจอร์ "กรอกข้อมูลย้อนหลัง": ถ้า admin ย้อนไปกรอก
+    // ข้อมูลให้สัปดาห์เก่าที่ผ่านมาแล้ว แต่ช่วงวันตามแผนของกิจกรรมงานนั้นไม่ตรงกับสัปดาห์ที่กรอกย้อนหลังไป
+    // (เช่น กิจกรรมงานเสร็จเร็ว/ช้ากว่าแผนที่ตั้งไว้ตอนแรก) ระบบเดิมจะไม่เอามาแสดงใน "กิจกรรมงานที่ทำในรอบ
+    // สัปดาห์นี้" ของเล่มรายงานเลย ทั้งที่บันทึกไว้แล้วจริงๆ
+    // สำคัญ: เช็คจาก "% เพิ่มขึ้นจริงในสัปดาห์นี้" (current > previous) ไม่ใช่แค่ "มี entry ประทับวันที่อยู่
+    // ในช่วงนี้" เฉยๆ — เจอบั๊กจริง: กิจกรรมงานที่ทำเสร็จ 100% ไปตั้งแต่ก่อนสัปดาห์นี้เริ่มแล้ว แต่บังเอิญมี
+    // entry (เช่น กด save ซ้ำโดยไม่ได้แก้อะไรเลย) ประทับวันที่อยู่ในสัปดาห์นี้พอดี จะโผล่ปนเข้ามาในรายงานทั้ง
+    // ที่ไม่มีความคืบหน้าอะไรเกิดขึ้นจริงในสัปดาห์นี้เลย (previous ก่อนสัปดาห์นี้ก็ 100% อยู่แล้วเหมือนกัน)
+    // เฉพาะ week==='this' เท่านั้น (ไม่ใช้กับ Tab สัปดาห์หน้าซึ่งเป็นแค่การวางแผนล่วงหน้า ยังไม่มีการบันทึก
+    // จริงเกิดขึ้นได้อยู่แล้ว)
     let actualEntryExtra = [];
     if (week !== 'next') {
       const excludeIds = new Set([...inWeek, ...overdueExtra].map((a) => a.id));
@@ -121,7 +125,18 @@ router.get('/weekly', async (req, res) => {
         [project_id, start, end]
       );
       const entryIds = new Set(entryResult.rows.map((r) => r.wbs_level3_id));
-      actualEntryExtra = flat.filter((a) => entryIds.has(a.id) && !excludeIds.has(a.id));
+      const candidates = flat.filter((a) => entryIds.has(a.id) && !excludeIds.has(a.id));
+      if (candidates.length > 0) {
+        const candidateIds = candidates.map((a) => a.id);
+        const dayBeforeWeekForCandidates = fmtISO(new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000));
+        const candidatePreviousMap = await getLatestActualMap(candidateIds, dayBeforeWeekForCandidates);
+        const candidateCurrentMap = await getLatestActualMap(candidateIds, end);
+        actualEntryExtra = candidates.filter((a) => {
+          const prev = candidatePreviousMap.get(a.id) || 0;
+          const curr = candidateCurrentMap.has(a.id) ? candidateCurrentMap.get(a.id) : prev;
+          return curr > prev;
+        });
+      }
     }
 
     const allActivities = [...inWeek, ...overdueExtra, ...actualEntryExtra];

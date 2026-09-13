@@ -549,6 +549,59 @@
   text-align: center;
 }
 
+/* กรอบครอบ photos-thumb-btn ไว้อีกชั้น เพื่อวางปุ่มลบถาวรที่มุมขวาบนซ้อนทับได้ (แยกจากปุ่มเลือก/ยกเลิก
+   ด้านในซึ่งครอบคลุมพื้นที่รูปทั้งหมดอยู่แล้ว) */
+.photos-thumb-wrap {
+  position: relative;
+}
+
+/* ตอนกำลังลากรูปนี้อยู่ ให้จางลงเห็นชัดว่ากำลังยกออกจากตำแหน่งเดิม */
+.photos-thumb-wrap--dragging {
+  opacity: 0.4;
+}
+
+/* ข้อความบอกใบ้ "ลากเพื่อสลับที่" — โผล่เฉพาะรูปที่เลือกแล้ว (ลากได้จริง) ซ่อนไว้เป็นค่าเริ่มต้น โผล่ตอน
+   เอาเมาส์ชี้ค้างไว้เท่านั้น กันบังภาพตลอดเวลาจนรก */
+.photos-thumb-btn__drag-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 10px;
+  text-align: center;
+  padding: 3px 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+.photos-thumb-btn:hover .photos-thumb-btn__drag-hint {
+  opacity: 1;
+}
+
+.photos-thumb-btn__delete {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger, #c0392b);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.photos-thumb-btn__delete:hover:not(:disabled) { background: #a5311f; }
+.photos-thumb-btn__delete:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /* ===== เลย์เอาต์ 3 คอลัมน์: กิจกรรมงาน (JE) / คุณภาพงาน / ความปลอดภัย ===== */
 .photos-3col {
   display: grid;

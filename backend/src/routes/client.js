@@ -175,8 +175,11 @@ router.get(
         }
       }
 
-      // เพิ่มกิจกรรมงานที่ "มีการบันทึกความคืบหน้าจริงเกิดขึ้นในสัปดาห์นี้" เข้ามาด้วย (สำหรับฟีเจอร์กรอก
-      // ข้อมูลย้อนหลัง) — เหตุผลเดียวกับ routes/progress.js ทุกประการ (ดูคอมเมนต์เต็มที่นั่น)
+      // เพิ่มกิจกรรมงานที่ "มีความคืบหน้าเพิ่มขึ้นจริงในสัปดาห์นี้" เข้ามาด้วย (สำหรับฟีเจอร์กรอกข้อมูล
+      // ย้อนหลัง) — เหตุผลเดียวกับ routes/progress.js ทุกประการ (ดูคอมเมนต์เต็มที่นั่น) สำคัญ: เช็คจาก "%
+      // เพิ่มขึ้นจริง" (current > previous) ไม่ใช่แค่ "มี entry ประทับวันที่อยู่ในช่วงนี้" เฉยๆ — กันกิจกรรม
+      // งานที่เสร็จ 100% ไปก่อนสัปดาห์นี้เริ่มแล้ว แต่บังเอิญมี entry (เช่น กด save ซ้ำ) ประทับวันที่อยู่ใน
+      // สัปดาห์นี้พอดี โผล่ปนเข้ามาทั้งที่ไม่มีความคืบหน้าอะไรเกิดขึ้นจริงในสัปดาห์นี้เลย
       let actualEntryExtra = [];
       if (week !== 'next') {
         const excludeIds = new Set([...inWeek, ...overdueExtra].map((a) => a.id));
@@ -190,7 +193,18 @@ router.get(
           [project_id, start, end]
         );
         const entryIds = new Set(entryResult.rows.map((r) => r.wbs_level3_id));
-        actualEntryExtra = flat.filter((a) => entryIds.has(a.id) && !excludeIds.has(a.id));
+        const candidates = flat.filter((a) => entryIds.has(a.id) && !excludeIds.has(a.id));
+        if (candidates.length > 0) {
+          const candidateIds = candidates.map((a) => a.id);
+          const dayBeforeWeekForCandidates = fmtISO(new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000));
+          const candidatePreviousMap = await getLatestActualMap(candidateIds, dayBeforeWeekForCandidates);
+          const candidateCurrentMap = await getLatestActualMap(candidateIds, end);
+          actualEntryExtra = candidates.filter((a) => {
+            const prev = candidatePreviousMap.get(a.id) || 0;
+            const curr = candidateCurrentMap.has(a.id) ? candidateCurrentMap.get(a.id) : prev;
+            return curr > prev;
+          });
+        }
       }
 
       const allActivities = [...inWeek, ...overdueExtra, ...actualEntryExtra];
@@ -476,7 +490,7 @@ router.get('/reports/:id/photos', requireClientTab('full-report'), requireProjec
        LEFT JOIN project_mgt.report_photo_selections sel
          ON sel.progress_photo_id = pp.id AND sel.report_id = $1
        WHERE wl1.project_id = $2 AND pe.entry_date BETWEEN $3 AND $4
-       ORDER BY wl3.id, pe.entry_date DESC, pp.id DESC`,
+       ORDER BY wl3.id, (sel.id IS NULL), sel.sort_order, pe.entry_date DESC, pp.id DESC`,
       [req.params.id, report.project_id, report.week_start, report.week_end]
     );
 
