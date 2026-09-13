@@ -8,6 +8,7 @@ import useIsMobile from '../../hooks/useIsMobile';
 import WeeklyProgressTab from './WeeklyProgressTab';
 import OverallProgressTab from './OverallProgressTab';
 import SCurveTab from './SCurveTab';
+import { pickDefaultProjectId, setLastProjectId } from '../../utils/lastProject';
 import GroupSCurveGrid from './GroupSCurveGrid';
 import MobileForemanTab from '../Mobile/MobileForemanTab';
 import './ProjectManagement.css';
@@ -57,7 +58,10 @@ export default function ProjectManagement() {
     // ที่ปิดแล้วออกจาก dropdown ตามที่ตกลงกันไว้
     client.get('/projects', { params: { status: 'on' } }).then((res) => {
       setProjects(res.data.projects);
-      if (res.data.projects.length > 0) setProjectId(res.data.projects[0].id);
+      // default ตาม "โครงการที่เลือกล่าสุด" ข้ามเมนู (เช่น เพิ่งเปิดดู/แก้ไขจากเมนู "เปิดโครงการ" มา) แทนที่
+      // จะเลือกโครงการแรกในลิสต์เสมอเหมือนเดิม — ถ้าโครงการนั้นไม่มีอยู่ในลิสต์นี้แล้ว (เช่น ปิดงานไปแล้ว)
+      // จะ fallback ไปโครงการแรกให้อัตโนมัติเหมือนพฤติกรรมเดิม
+      setProjectId(pickDefaultProjectId(res.data.projects));
     });
   }, []);
 
@@ -77,7 +81,7 @@ export default function ProjectManagement() {
       <div className="pdata-toolbar">
         <div className="pdata-toolbar__filter">
           <span>เลือกโครงการ</span>
-          <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+          <select value={projectId} onChange={(e) => { setProjectId(e.target.value); setLastProjectId(e.target.value); }}>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>{p.project_code} - {p.name}</option>
             ))}

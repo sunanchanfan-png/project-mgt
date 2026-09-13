@@ -7,6 +7,7 @@ import WbsLevel3Modal from './WbsLevel3Modal';
 import GanttView from './GanttView';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { pickDefaultProjectId, setLastProjectId } from '../../utils/lastProject';
 import './ProjectData.css';
 
 const MENU_KEY = 'project_data';
@@ -105,7 +106,7 @@ export default function ProjectData() {
     // ต้องเห็นครบทุกสถานะไว้เผื่อกลับมาเปิดใหม่ทีหลัง)
     client.get('/projects', { params: { status: 'on' } }).then((res) => {
       setProjects(res.data.projects);
-      if (res.data.projects.length > 0) setProjectId(res.data.projects[0].id);
+      setProjectId(pickDefaultProjectId(res.data.projects));
     });
   }, []);
 
@@ -493,6 +494,7 @@ export default function ProjectData() {
             onChange={(e) => {
               if (!confirmLeaveGanttIfDirty()) return;
               setProjectId(e.target.value);
+              setLastProjectId(e.target.value);
             }}
           >
             {projects.map((p) => (

@@ -4,6 +4,7 @@ import Layout from '../../components/Layout';
 import ProjectModal from './ProjectModal';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { setLastProjectId } from '../../utils/lastProject';
 import './OpenProject.css';
 
 // กำหนดคอลัมน์และสัดส่วนความกว้าง (%w) ตามสเปคที่กำหนด รวมกัน = 100%
@@ -80,6 +81,9 @@ export default function Dashboard() {
   function openEditModal(project) {
     setEditingProject(project);
     setModalOpen(true);
+    // กดแถวนี้ = ถือว่า "เลือก" โครงการนี้จาก Menu 1 — จำไว้เป็นค่าเริ่มต้นให้เมนูอื่น (สร้างข้อมูลโครงการ/
+    // การจัดการโครงการ/จัดทำรายงาน) ใช้ตอนเปิดเมนูถัดไปด้วย ไม่ต้องมาเลือกโครงการซ้ำเอง
+    setLastProjectId(project.id);
   }
 
   // บันทึกสำเร็จ: ปิด popup อัตโนมัติ และ update แค่แถวที่เปลี่ยน (ไม่ reload ทั้งหน้า)

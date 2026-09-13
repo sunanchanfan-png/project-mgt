@@ -10,6 +10,7 @@ import useIsMobile from '../../hooks/useIsMobile';
 import ReportItemsTab from './ReportItemsTab';
 import PlanProgressTab from './PlanProgressTab';
 import NextWeekTab from './NextWeekTab';
+import { pickDefaultProjectId, setLastProjectId } from '../../utils/lastProject';
 import PhotosTab from './PhotosTab';
 import CompiledReportTab from './CompiledReportTab';
 import './Reports.css';
@@ -62,7 +63,7 @@ export default function Reports() {
     // แล้วออกจาก dropdown ตามที่ตกลงกันไว้
     return client.get('/projects', { params: { status: 'on' } }).then((res) => {
       setProjects(res.data.projects);
-      setProjectId((prev) => prev || (res.data.projects.length > 0 ? res.data.projects[0].id : ''));
+      setProjectId((prev) => prev || pickDefaultProjectId(res.data.projects));
     });
   }
 
@@ -140,7 +141,7 @@ export default function Reports() {
             <div className="pdata-toolbar__filters-group">
               <div className="pdata-toolbar__filter">
                 <span>เลือกโครงการ</span>
-                <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+                <select value={projectId} onChange={(e) => { setProjectId(e.target.value); setLastProjectId(e.target.value); }}>
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>{p.project_code} - {p.name}</option>
                   ))}
