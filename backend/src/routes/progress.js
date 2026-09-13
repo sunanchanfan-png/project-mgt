@@ -48,7 +48,7 @@ router.get('/all-activities', requireRole('admin', 'system_mgr'), async (req, re
 
 router.get('/weekly', async (req, res) => {
   try {
-    const { project_id, week, as_of: asOfParam } = req.query;
+    const { project_id, week, as_of: asOfParam, week_number: weekNumberParam } = req.query;
     if (!project_id) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
     // endpoint เดียวรองรับ 2 Tab (งานสัปดาห์นี้/หน้า) แยกกันด้วย query param — เช็คสิทธิ์ตาม Tab จริงที่
     // กำลังขอ ไม่ใช่เช็คแบบเหมารวม
@@ -66,15 +66,19 @@ router.get('/weekly', async (req, res) => {
     let start;
     let end;
     let thisWeekRange = null;
+    let resolvedWeekNumber = null;
     if (contractStart) {
-      // as_of: ใช้ตอนเรียกจาก Tab9 "เล่มรายงาน" — ส่ง week_end ของรายงานฉบับนั้นมาแทน "วันนี้จริง" เพื่อ
-      // ให้ได้สัปดาห์เดียวกับตอนที่สร้างรายงานฉบับนั้นเป๊ะ ไม่ขยับตามวันที่ปัจจุบันอีกต่อไป (ดูคอมเมนต์
-      // เดียวกันที่ /overall ด้านบน)
-      const today = asOfParam ? fmtISO(new Date(asOfParam)) : fmtISO(new Date());
-      const currentWeekNum = getProjectWeekNumber(contractStart, today);
-      const targetWeekNum = currentWeekNum + offsetWeeks;
+      // week_number: ใช้ตอนเลือก "สัปดาห์ที่" ตรงๆ จากช่องเลือกใน Menu 3 (ฟีเจอร์ทำรายงานย้อนหลัง — ดู
+      // ProjectManagement.jsx) ระบุสัปดาห์ฐาน (base week) ตรงๆ แทนที่จะคำนวณจาก "วันนี้จริง" เลย — ยัง
+      // บวก offsetWeeks ต่อได้ตามปกติถ้าเป็น Tab "งานสัปดาห์หน้า" (base+1) เหมือนโหมดปกติทุกประการ ไม่ส่งมา
+      // (ตอนเรียกแบบปกติทุกที่ในระบบ) ยังคงคำนวณจาก "วันนี้จริง" เหมือนเดิมทุกประการ
+      const baseWeekNum = weekNumberParam
+        ? parseInt(weekNumberParam, 10)
+        : getProjectWeekNumber(contractStart, asOfParam ? fmtISO(new Date(asOfParam)) : fmtISO(new Date()));
+      const targetWeekNum = baseWeekNum + offsetWeeks;
+      resolvedWeekNumber = targetWeekNum;
       ({ start, end } = getProjectWeekBoundaries(contractStart, targetWeekNum));
-      if (week === 'next') thisWeekRange = getProjectWeekBoundaries(contractStart, currentWeekNum);
+      if (week === 'next') thisWeekRange = getProjectWeekBoundaries(contractStart, baseWeekNum);
     } else {
       ({ start, end } = getWeekRange(offsetWeeks));
       if (week === 'next') thisWeekRange = getWeekRange(0);
@@ -176,6 +180,7 @@ router.get('/weekly', async (req, res) => {
     res.json({
       week_start: start,
       week_end: end,
+      week_number: resolvedWeekNumber,
       groups,
     });
   } catch (err) {

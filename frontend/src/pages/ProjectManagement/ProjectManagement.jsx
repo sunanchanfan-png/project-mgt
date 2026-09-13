@@ -45,6 +45,16 @@ export default function ProjectManagement() {
   const [level1List, setLevel1List] = useState([]);
   const [activeTab, setActiveTab] = useState(null);
 
+  // "เลือกสัปดาห์ที่" — ฟีเจอร์ทำรายงานย้อนหลัง เฉพาะ admin/system_mgr เท่านั้น (ตรงกับสิทธิ์ backdate ที่
+  // ตกลงกันไว้ก่อนหน้า) เลือกสัปดาห์ไหน Tab งานสัปดาห์นี้/หน้า จะโหลด/แก้ไขข้อมูลของสัปดาห์นั้นตรงๆ ทันที
+  // เหมือนกำลังทำงานสัปดาห์นั้นอยู่จริง — null หมายถึง "ใช้สัปดาห์ปัจจุบันแบบ live" (ค่าเริ่มต้นเสมอ ตาม
+  // ที่ตกลงกันไว้ว่า default ต้องเป็นสัปดาห์ปัจจุบัน)
+  const canPickWeek = user?.role === 'admin' || user?.role === 'system_mgr';
+  const [selectedWeekNumber, setSelectedWeekNumber] = useState(null);
+  // สัปดาห์ปัจจุบันจริง (เรียนรู้จาก response ของ WeeklyProgressTab ตอนโหลดแบบ live ครั้งแรก) — ใช้กำหนด
+  // ขอบเขตบนของช่องเลือก (เลือกย้อนหลังได้ถึงสัปดาห์ปัจจุบันเท่านั้น ไม่ให้เลือกอนาคต)
+  const [currentWeekNumber, setCurrentWeekNumber] = useState(null);
+
   // ตั้งค่า Tab เริ่มต้นเป็น Tab แรกที่มีสิทธิ์เข้าถึงได้เสมอ (รายชื่อ Tab ที่มีสิทธิ์อาจยังไม่พร้อมตอน mount
   // แรกสุดถ้า permissions ยังโหลดไม่เสร็จ จึงต้องคอยอัปเดตทุกครั้งที่ TABS เปลี่ยน ไม่ใช่แค่ตอน mount ครั้งเดียว)
   useEffect(() => {
@@ -71,6 +81,10 @@ export default function ProjectManagement() {
       setProjectInfo(res.data.project);
       setLevel1List(res.data.items);
     });
+    // เปลี่ยนโครงการ = เลขสัปดาห์คนละชุดกันเลย (แต่ละโครงการนับสัปดาห์จากวันเริ่มสัญญาตัวเอง) รีเซ็ตกลับ
+    // ไปเป็น "สัปดาห์ปัจจุบันแบบ live" เสมอ กันเอาเลขสัปดาห์ของโครงการเก่ามาใช้ผิดโครงการ
+    setSelectedWeekNumber(null);
+    setCurrentWeekNumber(null);
   }, [projectId]);
 
   const projectLabel = projects.find((p) => String(p.id) === String(projectId));
@@ -91,6 +105,30 @@ export default function ProjectManagement() {
           <span>มูลค่า</span>
           <span className="mono">{formatMoney(projectInfo?.budget_total)}</span>
         </div>
+        {/* เลือกสัปดาห์ที่ (ทำรายงานย้อนหลัง) — เฉพาะ admin/system_mgr และต้องรู้ "สัปดาห์ปัจจุบัน" ก่อน
+            (จาก currentWeekNumber ที่ WeeklyProgressTab แจ้งมาตอนโหลด live ครั้งแรก) ถึงจะสร้างรายการ
+            ตัวเลือก 1..สัปดาห์ปัจจุบันได้ */}
+        {canPickWeek && currentWeekNumber && (
+          <div className="pdata-toolbar__filter">
+            <span>สัปดาห์ที่</span>
+            <select
+              value={selectedWeekNumber ?? currentWeekNumber}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                // เลือกตรงกับสัปดาห์ปัจจุบันพอดี = กลับไปโหมด live ปกติ (null) ไม่ต้องบังคับ override
+                // เป็นเลขเดิมซ้ำ กันปัญหา default วันที่ของ popup กลายเป็น "วันสิ้นสุดสัปดาห์" ซึ่งอาจเป็น
+                // วันในอนาคตสำหรับสัปดาห์ที่ยังไม่จบ (ต้องเป็นวันนี้จริงเสมอสำหรับสัปดาห์ปัจจุบัน)
+                setSelectedWeekNumber(n === currentWeekNumber ? null : n);
+              }}
+            >
+              {Array.from({ length: currentWeekNumber }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  สัปดาห์ที่ {n}{n === currentWeekNumber ? ' (ปัจจุบัน)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {TABS.length === 0 && (
@@ -114,12 +152,20 @@ export default function ProjectManagement() {
       {projectId && activeTab === 'this-week' && (
         showMobileFlow
           ? <MobileForemanTab projectId={projectId} week="this" />
-          : <WeeklyProgressTab projectId={projectId} week="this" editable />
+          : (
+            <WeeklyProgressTab
+              projectId={projectId}
+              week="this"
+              editable
+              weekNumberOverride={selectedWeekNumber}
+              onWeekResolved={setCurrentWeekNumber}
+            />
+          )
       )}
       {projectId && activeTab === 'next-week' && (
         showMobileFlow
           ? <MobileForemanTab projectId={projectId} week="next" />
-          : <WeeklyProgressTab projectId={projectId} week="next" editable />
+          : <WeeklyProgressTab projectId={projectId} week="next" editable weekNumberOverride={selectedWeekNumber} />
       )}
       {projectId && activeTab === 'overall' && (
         <OverallProgressTab

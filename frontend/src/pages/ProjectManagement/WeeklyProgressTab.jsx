@@ -61,13 +61,11 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// helper กันพัง เผื่อเรียกตอน editingAct เป็น null ระหว่าง state transition สั้นๆ
-function savedIncrementSafe(act) {
-  if (!act) return 0;
-  return Math.max(0, (act.actual_percent || 0) - (act.previous_percent || 0));
-}
+// (เดิมมี helper savedIncrementSafe ไว้เช็คเงื่อนไขโชว์ปุ่ม "ลบข้อมูลล่าสุด" แต่พบว่าใช้ผลต่าง
+// ก่อนหน้า/ปัจจุบันไม่ถูกต้องสำหรับกิจกรรมที่เปิดจากช่องค้นหา (backdate) เพราะ 2 ค่านี้เท่ากันเสมอโดยดีไซน์
+// — เปลี่ยนไปเช็ค actual_percent ตรงๆ แทนแล้ว ดูจุดที่โชว์ปุ่มด้านล่าง)
 
-export default function WeeklyProgressTab({ projectId, week, editable }) {
+export default function WeeklyProgressTab({ projectId, week, editable, weekNumberOverride, onWeekResolved }) {
   const { user } = useAuth();
   // "กรอกข้อมูลย้อนหลัง" (เลือกวันที่อื่นนอกจากวันนี้ตอนบันทึก) เปิดให้เฉพาะ admin/system_mgr เท่านั้น —
   // ตรงกับที่ backend (routes/progress.js POST /entries) อนุญาตให้ระบุ entry_date เองเฉพาะ 2 role นี้
@@ -103,11 +101,15 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
   const [allActivities, setAllActivities] = useState([]);
   const [searchText, setSearchText] = useState('');
 
-  useEffect(() => {
+  function fetchAllActivities() {
     if (!projectId || !canBackdate) { setAllActivities([]); return; }
     client.get('/progress/all-activities', { params: { project_id: projectId } })
       .then((res) => setAllActivities(res.data.activities))
       .catch(() => setAllActivities([]));
+  }
+
+  useEffect(() => {
+    fetchAllActivities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, canBackdate]);
 
@@ -121,16 +123,26 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
   function fetchData() {
     if (!projectId) return;
     setLoading(true);
-    client.get('/progress/weekly', { params: { project_id: projectId, week } })
+    const params = { project_id: projectId, week };
+    // weekNumberOverride: ใช้ตอนเลือก "สัปดาห์ที่" ตรงๆ จากช่องเลือกใน ProjectManagement.jsx (ฟีเจอร์ทำ
+    // รายงานย้อนหลัง) — ไม่ส่งมา (undefined/null ตามปกติ) ระบบยังคำนวณจาก "วันนี้จริง" เหมือนเดิมทุกประการ
+    if (weekNumberOverride !== null && weekNumberOverride !== undefined) {
+      params.week_number = weekNumberOverride;
+    }
+    client.get('/progress/weekly', { params })
       .then((res) => {
         setData(res.data);
         setError('');
+        // แจ้ง parent (ProjectManagement.jsx) ว่าสัปดาห์ที่โหลดมาจริงๆ คือสัปดาห์ที่เท่าไหร่ — ใช้ตอนยังไม่
+        // ได้เลือก override (โหลดสัปดาห์ปัจจุบันจริง) เพื่อให้ parent รู้ว่า "สัปดาห์ปัจจุบัน" คือเลขไหน
+        // ไปสร้างตัวเลือกในช่องเลือก "สัปดาห์ที่" ให้ถูกต้อง (1..สัปดาห์ปัจจุบัน)
+        if (onWeekResolved && res.data.week_number != null) onWeekResolved(res.data.week_number);
       })
       .catch(() => setError('ดึงข้อมูลไม่สำเร็จ'))
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { fetchData(); }, [projectId, week]);
+  useEffect(() => { fetchData(); }, [projectId, week, weekNumberOverride]);
 
   // เตรียม "รายงานสัปดาห์ปัจจุบัน" + โหลดรายละเอียดงานที่เคยพิมพ์ไว้แล้วทั้งชุด — เฉพาะ Tab ที่ editable
   // เท่านั้น (Tab สัปดาห์หน้าไม่ต้องใช้ ไม่มี popup ให้กรอกอะไรอยู่แล้ว) เงียบไว้ถ้าดึงไม่สำเร็จ (เช่น ยังไม่ได้
@@ -161,9 +173,15 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
   function openEditModal(act) {
     setEditingAct(act);
     setModalPercent(thisWeekIncrement(act).toString());
-    setModalRemark(remarksMap[`level3:${act.id}`] || '');
     setModalPhotos((act.photos || []).map((p) => ({ tempId: `existing-${p.id}`, name: '', url: p.url, uploading: false })));
-    setModalEntryDate(todayStr());
+    // ถ้ากำลังดูสัปดาห์ที่เลือกไว้เอง (ไม่ใช่สัปดาห์ปัจจุบันแบบ live) ให้ default วันที่เป็น "วันสิ้นสุด
+    // ของสัปดาห์นั้น" เลย (แทนที่จะเป็นวันนี้จริง) เพราะกำลังกรอกข้อมูลแทนสัปดาห์นั้นโดยตรงอยู่แล้ว — ยังคง
+    // แก้เป็นวันอื่นในสัปดาห์เดียวกันเองได้ถ้าต้องการ (เฉพาะ admin/system_mgr เหมือนเดิม)
+    const useWeekEnd = weekNumberOverride !== null && weekNumberOverride !== undefined && data?.week_end;
+    setModalEntryDate(useWeekEnd ? data.week_end : todayStr());
+    // remarksMap เป็นของ "รายงานสัปดาห์ปัจจุบัน" เท่านั้น — ถ้ากำลังดูสัปดาห์อื่นที่เลือกไว้เอง ค่านี้จะผิด
+    // บริบท (คนละสัปดาห์กัน) เริ่มจากช่องว่างเปล่าให้พิมพ์ใหม่แทน กันสับสน/บันทึกทับผิดสัปดาห์
+    setModalRemark(useWeekEnd ? '' : (remarksMap[`level3:${act.id}`] || ''));
   }
 
   function closeEditModal() {
@@ -230,6 +248,7 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
       await client.delete('/progress/entries/latest', { params: { wbs_level3_id: act.id } });
       closeEditModal();
       fetchData();
+      fetchAllActivities();
     } catch (err) {
       alert(err.response?.data?.error || 'ลบไม่สำเร็จ');
     } finally {
@@ -298,6 +317,7 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
 
       closeEditModal();
       fetchData();
+      fetchAllActivities();
     } catch (err) {
       alert(err.response?.data?.error || 'บันทึกไม่สำเร็จ');
     } finally {
@@ -581,7 +601,7 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
               <div>
-                {savedIncrementSafe(editingAct) > 0 && (
+                {(editingAct?.actual_percent || 0) > 0 && (
                   <button
                     type="button"
                     className="btn-secondary btn-secondary--sm"
