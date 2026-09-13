@@ -66,7 +66,7 @@ function fmtDMY(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-export default function CompiledReportTab({ reportId, reportLabel, project, report, printBarHidden = false, onReportUpdated, onProjectUpdated }) {
+export default function CompiledReportTab({ reportId, reportLabel, project, report, printBarHidden = false, onReportUpdated }) {
   const [progress, setProgress] = useState(null);
   const [itemsByCategory, setItemsByCategory] = useState(null);
   const [nextWeekGroups, setNextWeekGroups] = useState(null);
@@ -190,15 +190,15 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
   // @page เป็น landscape ล้วนทั้งเอกสาร (ไม่ต้องสลับ orientation กลางเอกสารเลย เลยไม่มีปัญหาเรื่อง browser
   // support) — ผลคือได้พิมพ์ 2 รอบแยกกัน (รายงานหลัก + แผนงาน) แทนที่จะรวมเป็นเล่มเดียวกันอัตโนมัติ
   function handlePrintSchedule() {
-    if (!project?.schedule_pdf_url) return;
-    const pageCount = project.schedule_pdf_pages || 1;
+    if (!report?.schedule_pdf_url) return;
+    const pageCount = report.schedule_pdf_pages || 1;
     const printWindow = window.open('', '_blank', 'width=1100,height=800');
     if (!printWindow) {
       alert('เบราว์เซอร์บล็อกการเปิดหน้าต่างพิมพ์ กรุณาอนุญาต pop-up สำหรับเว็บไซต์นี้แล้วลองใหม่');
       return;
     }
     const imagesHtml = Array.from({ length: pageCount }, (_, i) => i + 1)
-      .map((page) => `<img src="${buildPdfPageImageUrl(project.schedule_pdf_url, page)}" />`)
+      .map((page) => `<img src="${buildPdfPageImageUrl(report.schedule_pdf_url, page)}" />`)
       .join('\n');
     printWindow.document.open();
     printWindow.document.write(`<!doctype html>
@@ -262,10 +262,10 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
     }
   }
 
-  // อัปโหลดไฟล์แผนงาน MS-Project (PDF) — ผูกกับ "โครงการ" ไม่ใช่รายงานฉบับนี้ฉบับเดียว (ดู
-  // migration_019_schedule_pdf.sql) อัปโหลดใหม่ทับของเก่าเสมอ (1 โครงการ = 1 ไฟล์) เสร็จแล้วเรียก
-  // onProjectUpdated() ให้ Reports.jsx โหลด project object ใหม่ (เพื่อให้ project.schedule_pdf_url ที่นี่
-  // อัปเดตตาม และฝั่งแอปลูกค้าเห็นไฟล์ใหม่ในครั้งถัดไปที่กดรีเฟรช/เปิดแอปด้วย)
+  // อัปโหลดไฟล์แผนงาน MS-Project (PDF) — ผูกกับ "รายงานฉบับนี้ฉบับเดียว" (แยกตามสัปดาห์ ดูเหตุผลใน
+  // migration_021_schedule_pdf_per_report.sql) อัปโหลดใหม่ทับของเก่าเฉพาะรายงานฉบับนี้เท่านั้น ฉบับอื่นไม่
+  // กระทบ เสร็จแล้วเรียก onReportUpdated() ให้ Reports.jsx โหลดรายชื่อรายงานใหม่ (เพื่อให้ report.schedule_
+  // pdf_url ที่นี่อัปเดตตาม และฝั่งแอปลูกค้า/โฟร์แมนเห็นไฟล์ใหม่ในครั้งถัดไปที่กดรีเฟรช/เปิดแอปด้วย)
   async function handleUploadSchedulePdf(e) {
     const file = e.target.files?.[0];
     e.target.value = ''; // เคลียร์ input ทันที กันเลือกไฟล์เดิมซ้ำแล้ว onChange ไม่ทำงาน (browser ไม่ยิง
@@ -279,10 +279,10 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
     try {
       const formData = new FormData();
       formData.append('pdf', file);
-      await client.post(`/reports/schedule-pdf?project_id=${project.id}`, formData, {
+      await client.post(`/reports/${reportId}/schedule-pdf`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      if (onProjectUpdated) onProjectUpdated();
+      if (onReportUpdated) onReportUpdated();
       alert('แนบไฟล์แผนงานเรียบร้อยแล้ว');
     } catch (err) {
       alert(err.response?.data?.error || 'อัปโหลดไฟล์ไม่สำเร็จ');
@@ -451,27 +451,27 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
           </span>
           <div style={{ flex: 1 }} />
           <label className="btn-secondary btn-secondary--sm" style={{ cursor: uploadingPdf ? 'default' : 'pointer' }}>
-            {uploadingPdf ? 'กำลังอัปโหลด...' : (project?.schedule_pdf_url ? '📎 เปลี่ยนไฟล์แผนงาน' : '📎 แนบไฟล์แผนงาน (PDF)')}
+            {uploadingPdf ? 'กำลังอัปโหลด...' : (report?.schedule_pdf_url ? '📎 เปลี่ยนไฟล์แผนงาน' : '📎 แนบไฟล์แผนงาน (PDF)')}
             <input
               type="file"
               accept="application/pdf"
               hidden
-              disabled={uploadingPdf || !project?.id}
+              disabled={uploadingPdf || !reportId}
               onChange={handleUploadSchedulePdf}
             />
           </label>
-          {project?.schedule_pdf_url && (
+          {report?.schedule_pdf_url && (
             <a
-              href={buildPdfPageImageUrl(project.schedule_pdf_url, 1)}
+              href={buildPdfPageImageUrl(report.schedule_pdf_url, 1)}
               target="_blank"
               rel="noreferrer"
               className="btn-secondary btn-secondary--sm"
-              title={project.schedule_pdf_pages > 1 ? `ดูหน้าแรกจากทั้งหมด ${project.schedule_pdf_pages} หน้า (ลูกค้าจะเห็นครบทุกหน้าในแอป)` : undefined}
+              title={report.schedule_pdf_pages > 1 ? `ดูหน้าแรกจากทั้งหมด ${report.schedule_pdf_pages} หน้า (ลูกค้าจะเห็นครบทุกหน้าในแอป)` : undefined}
             >
               👁️ ดูไฟล์เดิม
             </a>
           )}
-          {project?.schedule_pdf_url && (
+          {report?.schedule_pdf_url && (
             <button className="btn-secondary btn-secondary--sm" onClick={handlePrintSchedule}>
               🖨️ พิมพ์แผนงาน
             </button>

@@ -290,15 +290,15 @@ export default function ClientReportTab({ projectId, project, reportId, report }
   // พิมพ์ไฟล์แผนงาน MS-Project แยกต่างหาก (คนละหน้าต่าง แนวนอนล้วนทั้งเอกสาร) — โค้ดเดียวกับฝั่ง staff
   // (CompiledReportTab.jsx) ทุกประการ ดูเหตุผลที่เลือกวิธีนี้ (เปิดหน้าต่างแยกแทนรวมในเอกสารเดียว) ที่นั่น
   function handlePrintSchedule() {
-    if (!project?.schedule_pdf_url) return;
-    const pageCount = project.schedule_pdf_pages || 1;
+    if (!report?.schedule_pdf_url) return;
+    const pageCount = report.schedule_pdf_pages || 1;
     const printWindow = window.open('', '_blank', 'width=1100,height=800');
     if (!printWindow) {
       alert('เบราว์เซอร์บล็อกการเปิดหน้าต่างพิมพ์ กรุณาอนุญาต pop-up สำหรับเว็บไซต์นี้แล้วลองใหม่');
       return;
     }
     const imagesHtml = Array.from({ length: pageCount }, (_, i) => i + 1)
-      .map((page) => `<img src="${buildPdfPageImageUrl(project.schedule_pdf_url, page)}" />`)
+      .map((page) => `<img src="${buildPdfPageImageUrl(report.schedule_pdf_url, page)}" />`)
       .join('\n');
     printWindow.document.open();
     printWindow.document.write(`<!doctype html>
@@ -338,9 +338,9 @@ export default function ClientReportTab({ projectId, project, reportId, report }
 
   return (
     <div className="progress-table-wrap">
-      {(project?.schedule_pdf_url || reportId) && (
+      {(report?.schedule_pdf_url || reportId) && (
         <div className="client-report-print-hide" style={{ padding: '0 16px', marginBottom: 8, display: 'flex', gap: 6 }}>
-          {project?.schedule_pdf_url && (
+          {report?.schedule_pdf_url && (
             <button
               type="button"
               className="client-app__select"
@@ -360,7 +360,7 @@ export default function ClientReportTab({ projectId, project, reportId, report }
               🖨️ Print เล่ม
             </button>
           )}
-          {project?.schedule_pdf_url && (
+          {report?.schedule_pdf_url && (
             <button
               type="button"
               className="client-app__select"
@@ -373,21 +373,21 @@ export default function ClientReportTab({ projectId, project, reportId, report }
         </div>
       )}
 
-      {project?.schedule_pdf_url && showSchedule && (
+      {report?.schedule_pdf_url && showSchedule && (
         <div className="client-report-print-hide" style={{ padding: '0 16px', marginBottom: 8 }}>
           {/* โชว์เป็นรูปภาพทีละหน้า (แปลงมาจาก PDF อัตโนมัติผ่าน Cloudinary) แทนการเปิดไฟล์ PDF ตรงๆ เพราะ
               browser/PWA บนมือถือส่วนใหญ่ไม่มีตัวอ่าน PDF ในตัว โดยเฉพาะโหมด standalone ที่ติดตั้งเป็นไอคอน
               แอป — รูปภาพเปิดได้ชัวร์ทุกที่ไม่มีข้อยกเว้น */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {Array.from({ length: project.schedule_pdf_pages || 1 }, (_, i) => i + 1).map((page) => (
+            {Array.from({ length: report.schedule_pdf_pages || 1 }, (_, i) => i + 1).map((page) => (
               <div key={page} style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
-                {project.schedule_pdf_pages > 1 && (
+                {report.schedule_pdf_pages > 1 && (
                   <p style={{ margin: 0, padding: '6px 10px', fontSize: 12, color: 'var(--ink-soft)', borderBottom: '1px solid var(--line)' }}>
-                    หน้า {page} / {project.schedule_pdf_pages}
+                    หน้า {page} / {report.schedule_pdf_pages}
                   </p>
                 )}
                 <img
-                  src={buildPdfPageImageUrl(project.schedule_pdf_url, page)}
+                  src={buildPdfPageImageUrl(report.schedule_pdf_url, page)}
                   alt={`แผนงานหน้า ${page}`}
                   style={{ width: '100%', display: 'block' }}
                   loading="lazy"

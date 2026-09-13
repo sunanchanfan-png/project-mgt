@@ -7,7 +7,7 @@ import client from '../../api/client';
 import SCurveChart from './SCurveChart';
 import { SCURVE_PRINT_CSS, openPrintWindow, fmtDMY } from './printUtils';
 
-export default function GroupSCurveGrid({ projectId, level1List, contractStart }) {
+export default function GroupSCurveGrid({ projectId, level1List, contractStart, asOf }) {
   // curves: Map<level1Id, { points, today, error }> — ดึงของทุกกลุ่มงานพร้อมกันตั้งแต่เปิด Tab นี้
   const [curves, setCurves] = useState({});
   const [loading, setLoading] = useState(false);
@@ -18,11 +18,15 @@ export default function GroupSCurveGrid({ projectId, level1List, contractStart }
     if (!projectId || level1List.length === 0) return;
     setLoading(true);
     Promise.all(
-      level1List.map((g) =>
-        client.get('/progress/scurve', { params: { project_id: projectId, level1_id: g.id } })
+      level1List.map((g) => {
+        // asOf: ใช้ตอนเลือก "สัปดาห์ที่" ย้อนหลังไว้ที่ ProjectManagement.jsx — freeze กราฟของทุกกลุ่มงาน
+        // ไว้ ณ วันสิ้นสุดของสัปดาห์นั้น (ไม่ส่งมา = พฤติกรรมเดิมทุกประการ)
+        const params = { project_id: projectId, level1_id: g.id };
+        if (asOf) params.as_of = asOf;
+        return client.get('/progress/scurve', { params })
           .then((res) => ({ id: g.id, points: res.data.points, today: res.data.today, error: null }))
-          .catch(() => ({ id: g.id, points: null, today: null, error: 'ดึงข้อมูลไม่สำเร็จ' }))
-      )
+          .catch(() => ({ id: g.id, points: null, today: null, error: 'ดึงข้อมูลไม่สำเร็จ' }));
+      })
     ).then((results) => {
       const map = {};
       results.forEach((r) => { map[r.id] = r; });
@@ -30,7 +34,7 @@ export default function GroupSCurveGrid({ projectId, level1List, contractStart }
     }).finally(() => setLoading(false));
   }
 
-  useEffect(() => { fetchAll(); }, [projectId, level1List]);
+  useEffect(() => { fetchAll(); }, [projectId, level1List, asOf]);
 
   // กด Esc ปิด popup ได้ด้วย (นอกจากคลิกปุ่ม ✕ หรือคลิกพื้นหลังมืด)
   useEffect(() => {

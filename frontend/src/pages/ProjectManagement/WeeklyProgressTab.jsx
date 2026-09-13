@@ -115,7 +115,13 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
         // แจ้ง parent (ProjectManagement.jsx) ว่าสัปดาห์ที่โหลดมาจริงๆ คือสัปดาห์ที่เท่าไหร่ — ใช้ตอนยังไม่
         // ได้เลือก override (โหลดสัปดาห์ปัจจุบันจริง) เพื่อให้ parent รู้ว่า "สัปดาห์ปัจจุบัน" คือเลขไหน
         // ไปสร้างตัวเลือกในช่องเลือก "สัปดาห์ที่" ให้ถูกต้อง (1..สัปดาห์ปัจจุบัน)
-        if (onWeekResolved && res.data.week_number != null) onWeekResolved(res.data.week_number);
+        // แจ้ง parent (ProjectManagement.jsx) ว่า "สัปดาห์ปัจจุบันจริง" คือเลขไหน — เฉพาะตอนดึงข้อมูลแบบ
+        // live เท่านั้น (ไม่มี weekNumberOverride) ถ้าแจ้งทุกครั้งรวมถึงตอนกำลังดูสัปดาห์เก่าที่เลือกไว้เอง
+        // จะทำให้ parent เข้าใจผิดว่า "สัปดาห์ที่กำลังดูอยู่ตอนนี้" คือสัปดาห์ปัจจุบัน (bug ที่เจอจริง:
+        // เลือกดูสัปดาห์ 1 แล้ว dropdown เปลี่ยนไปโชว์ "สัปดาห์ที่ 1 (ปัจจุบัน)" และตัวเลือกอื่นหายหมด
+        // เพราะ currentWeekNumber ถูกเขียนทับเป็น 1 ไปด้วย)
+        const isLiveFetch = weekNumberOverride === null || weekNumberOverride === undefined;
+        if (isLiveFetch && onWeekResolved && res.data.week_number != null) onWeekResolved(res.data.week_number);
       })
       .catch(() => setError('ดึงข้อมูลไม่สำเร็จ'))
       .finally(() => setLoading(false));
@@ -129,7 +135,17 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
   // จะใช้งานไม่ได้เท่านั้น (แจ้งเตือนตอนกดบันทึกแทน)
   useEffect(() => {
     if (!projectId || !editable) return;
-    client.get('/reports/current', { params: { project_id: projectId } })
+    // ถ้ากำลังดูสัปดาห์ที่เลือกไว้เอง (ไม่ใช่สัปดาห์ปัจจุบันแบบ live) ต้องหารายงานของ "สัปดาห์นั้นเป๊ะๆ"
+    // ผ่าน /reports/for-date (ใช้ week_end ของสัปดาห์ที่กำลังแสดงอยู่ตอนนี้ — data ยังไม่พร้อมตอน mount
+    // ครั้งแรกก็รอไปก่อน จะรันซ้ำเองเมื่อ data โหลดเสร็จ) — เดิมใช้ /reports/current (สัปดาห์ปัจจุบันเสมอ)
+    // ทุกกรณี ทำให้เปิด popup ของสัปดาห์เก่าที่เลือกไว้แล้ว "รายละเอียดงาน" ที่เคยพิมพ์/บันทึกไปแล้วจริงใน DB
+    // ไม่ถูกดึงมาโชว์ (ดูเหมือนข้อมูลหายไปทั้งที่จริงๆ บันทึกสำเร็จแล้ว)
+    const isOverriding = weekNumberOverride !== null && weekNumberOverride !== undefined;
+    if (isOverriding && !data?.week_end) return;
+    const reportPromise = isOverriding
+      ? client.get('/reports/for-date', { params: { project_id: projectId, date: data.week_end } })
+      : client.get('/reports/current', { params: { project_id: projectId } });
+    reportPromise
       .then((res) => {
         const reportId = res.data.report.id;
         setCurrentReportId(reportId);
@@ -140,8 +156,9 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
         res.data.remarks.forEach((r) => { map[`${r.wbs_level}:${r.wbs_id}`] = r.remark; });
         setRemarksMap(map);
       })
-      .catch(() => { setCurrentReportId(null); });
-  }, [projectId, editable]);
+      .catch(() => { setCurrentReportId(null); setRemarksMap({}); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, editable, weekNumberOverride, data?.week_end]);
 
   // % ที่ทำได้ใน "สัปดาห์นี้เอง" (ไม่รวมของก่อนหน้า) — คำนวณจากข้อมูลจริงเสมอ (actual - ก่อนหน้า)
   // ไม่ใช่ local state ที่หายไปตอน refresh — นี่คือสิ่งที่ทำให้ตัวเลขในช่อง "ปัจจุบัน" ค้างอยู่ถาวรตามที่ขอ
@@ -158,9 +175,9 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
     // แก้เป็นวันอื่นในสัปดาห์เดียวกันเองได้ถ้าต้องการ (เฉพาะ admin/system_mgr เหมือนเดิม)
     const useWeekEnd = weekNumberOverride !== null && weekNumberOverride !== undefined && data?.week_end;
     setModalEntryDate(useWeekEnd ? data.week_end : todayStr());
-    // remarksMap เป็นของ "รายงานสัปดาห์ปัจจุบัน" เท่านั้น — ถ้ากำลังดูสัปดาห์อื่นที่เลือกไว้เอง ค่านี้จะผิด
-    // บริบท (คนละสัปดาห์กัน) เริ่มจากช่องว่างเปล่าให้พิมพ์ใหม่แทน กันสับสน/บันทึกทับผิดสัปดาห์
-    setModalRemark(useWeekEnd ? '' : (remarksMap[`level3:${act.id}`] || ''));
+    // remarksMap ตอนนี้ผูกกับ "สัปดาห์ที่กำลังดูอยู่จริง" แล้วเสมอ (ไม่ว่าจะ live หรือเลือกสัปดาห์เก่าไว้)
+    // ดูคอมเมนต์ที่ effect ดึง remarksMap ด้านบนประกอบ — prefill ได้ตรงๆ ไม่ต้องแยกกรณีอีกต่อไป
+    setModalRemark(remarksMap[`level3:${act.id}`] || '');
   }
 
   function closeEditModal() {
@@ -169,14 +186,6 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
 
   function handleEntryDateChange(newDate) {
     setModalEntryDate(newDate);
-    // remarksMap ที่ prefill ไว้ตอนเปิด popup เป็นของ "รายงานสัปดาห์ปัจจุบัน" เท่านั้น — พอเปลี่ยนไปเลือก
-    // วันอื่นที่ไม่ใช่วันนี้ (backdate) ค่าที่เคย prefill ไว้จะผิดบริบท (เป็นของสัปดาห์ปัจจุบัน ไม่ใช่ของ
-    // สัปดาห์ที่กำลังจะบันทึกย้อนหลัง) เคลียร์ทิ้งให้พิมพ์ใหม่ชัดเจนไปเลย กันสับสน/บันทึกทับผิดสัปดาห์
-    if (newDate === todayStr()) {
-      setModalRemark(remarksMap[`level3:${editingAct.id}`] || '');
-    } else {
-      setModalRemark('');
-    }
   }
 
   // อัปโหลดจริงขึ้น Cloudinary ทันทีที่เลือกไฟล์ (ไม่รอกดบันทึก) — ใส่ placeholder "กำลังอัปโหลด..."
@@ -247,7 +256,6 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
     // ฐานคือ previous_percent (ก่อนสัปดาห์ที่กำลังดูอยู่เริ่ม) เสมอ — เพราะ "ปัจจุบัน" คือค่าที่แก้ไขให้เป็น
     // ยอด "ทั้งหมดของสัปดาห์นี้" ใหม่ (ไม่ใช่ค่าที่บวกเพิ่มไปเรื่อยๆ) กด "แก้ไข" แล้วเปลี่ยนตัวเลขคือ "แก้ยอดใหม่"
     const newTotal = Math.min(100, editingAct.previous_percent + inc);
-    const isBackdating = modalEntryDate !== todayStr();
     setModalSaving(true);
     try {
       // ส่ง entry_date ไปด้วยเสมอ — backend จะใช้ค่านี้จริงเฉพาะตอนที่ผู้ใช้เป็น admin/system_mgr เท่านั้น
@@ -261,31 +269,18 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
         entry_date: modalEntryDate,
       });
 
-      // หา report_id ที่ถูกต้องสำหรับบันทึก "รายละเอียดงาน" — ถ้ากำลังกรอกย้อนหลัง (เลือกวันไม่ใช่วันนี้)
-      // ต้องผูกกับรายงานของ "สัปดาห์ที่มีวันที่นั้นอยู่" ไม่ใช่รายงานสัปดาห์ปัจจุบัน (currentReportId)
-      let targetReportId = currentReportId;
-      if (isBackdating) {
+      // บันทึก "รายละเอียดงาน" เข้ารายงานของสัปดาห์ที่กำลังดูอยู่ (currentReportId ถูก resolve ให้ตรงกับ
+      // สัปดาห์ที่กำลังดูอยู่จริงแล้วจาก effect ด้านบน ไม่ว่าจะเป็นสัปดาห์ปัจจุบันแบบ live หรือสัปดาห์เก่าที่
+      // เลือกไว้เอง) — ทำเป็นขั้นตอนแยกต่างหาก ถ้าพลาด (เช่น ไม่มีสิทธิ์ Tab จัดทำรายงาน) ไม่ทำให้การบันทึก
+      // %/รูปที่เพิ่งสำเร็จไปแล้วเสียหายไปด้วย แค่แจ้งเตือนแยกให้รู้ว่าส่วนนี้ไม่ได้บันทึก
+      if (currentReportId) {
         try {
-          const forDateRes = await client.get('/reports/for-date', { params: { project_id: projectId, date: modalEntryDate } });
-          targetReportId = forDateRes.data.report.id;
-        } catch (forDateErr) {
-          targetReportId = null;
-        }
-      }
-
-      // บันทึก "รายละเอียดงาน" เข้ารายงานของสัปดาห์ที่เกี่ยวข้องด้วย (ช่องเดียวกับ remark ของ Menu จัดทำ
-      // รายงาน) — ทำเป็นขั้นตอนแยกต่างหาก ถ้าพลาด (เช่น ไม่มีสิทธิ์ Tab จัดทำรายงาน) ไม่ทำให้การบันทึก %/รูป
-      // ที่เพิ่งสำเร็จไปแล้วเสียหายไปด้วย แค่แจ้งเตือนแยกให้รู้ว่าส่วนนี้ไม่ได้บันทึก
-      if (targetReportId) {
-        try {
-          await client.put(`/reports/${targetReportId}/remarks`, {
+          await client.put(`/reports/${currentReportId}/remarks`, {
             wbs_level: 'level3',
             wbs_id: editingAct.id,
             remark: modalRemark,
           });
-          if (!isBackdating) {
-            setRemarksMap((prev) => ({ ...prev, [`level3:${editingAct.id}`]: modalRemark }));
-          }
+          setRemarksMap((prev) => ({ ...prev, [`level3:${editingAct.id}`]: modalRemark }));
         } catch (remarkErr) {
           alert('บันทึก %/รูปสำเร็จ แต่บันทึก "รายละเอียดงาน" ไม่สำเร็จ (อาจไม่มีสิทธิ์ Tab จัดทำรายงาน) — % และรูปถูกบันทึกเรียบร้อยแล้ว');
         }

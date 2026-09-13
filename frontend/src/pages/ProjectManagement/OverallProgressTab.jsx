@@ -51,7 +51,7 @@ const PRINT_CSS = `
   .p-l3 .p-label-col { padding-left: 28px; }
 `;
 
-export default function OverallProgressTab({ projectId, level1List, projectLabel, contractStart }) {
+export default function OverallProgressTab({ projectId, level1List, projectLabel, contractStart, asOf, readOnly }) {
   const [level1Filter, setLevel1Filter] = useState(ALL_VALUE);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -65,13 +65,16 @@ export default function OverallProgressTab({ projectId, level1List, projectLabel
     setLoading(true);
     const params = { project_id: projectId };
     if (level1Filter !== ALL_VALUE) params.level1_id = level1Filter;
+    // asOf: ใช้ตอนเลือก "สัปดาห์ที่" ย้อนหลังไว้ที่ ProjectManagement.jsx — freeze ตารางไว้ ณ วันสิ้นสุดของ
+    // สัปดาห์นั้น แทนที่จะเป็น "วันนี้จริง" เสมอ (ไม่ส่งมา = พฤติกรรมเดิมทุกประการ)
+    if (asOf) params.as_of = asOf;
     client.get('/progress/overall', { params })
       .then((res) => { setData(res.data); setError(''); })
       .catch(() => setError('ดึงข้อมูลไม่สำเร็จ'))
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { fetchData(); }, [projectId, level1Filter]);
+  useEffect(() => { fetchData(); }, [projectId, level1Filter, asOf]);
 
   // % ที่ทำได้ "วันนี้" (ไม่รวมของเมื่อวาน) — คำนวณจากข้อมูลจริงเสมอ (actual - ก่อนหน้า) เหมือน Tab 1/2
   function todayIncrement(act) {
@@ -170,6 +173,11 @@ export default function OverallProgressTab({ projectId, level1List, projectLabel
         </div>
         <button className="btn-primary btn-primary--sm" onClick={handlePrint}>🖨 Print</button>
       </div>
+      {readOnly && data?.as_of && (
+        <p className="pdata-status" style={{ marginTop: -8, marginBottom: 12 }}>
+          📌 กำลังดูข้อมูล ณ วันที่ {fmtDMY(data.as_of)} (อ่านอย่างเดียว — เปลี่ยนกลับเป็น "สัปดาห์ปัจจุบัน" ที่มุมขวาบนเพื่อแก้ไข)
+        </p>
+      )}
 
       {loading && !data && <p>กำลังโหลดข้อมูล...</p>}
       {error && <p className="pdata-status pdata-status--warn">{error}</p>}
@@ -242,7 +250,7 @@ export default function OverallProgressTab({ projectId, level1List, projectLabel
                         <td>{fmtPct(act.plan_percent)}</td>
                         <td>{fmtPct(act.previous_percent)}</td>
                         <td>
-                          {isEditing ? (
+                          {readOnly ? fmtPct(savedIncrement) : (isEditing ? (
                             <input
                               type="number"
                               min="0"
@@ -262,13 +270,13 @@ export default function OverallProgressTab({ projectId, level1List, projectLabel
                               placeholder="0"
                               autoFocus
                             />
-                          ) : fmtPct(savedIncrement)}
+                          ) : fmtPct(savedIncrement))}
                         </td>
                         <td>{fmtPct(displayTotal)}</td>
                         <td>{fmtPct(100 - displayTotal)}</td>
                         <td className={statusClass(act.status)}>{act.status || '-'}</td>
                         <td>
-                          {isEditing ? (
+                          {readOnly ? null : (isEditing ? (
                             <div className="progress-table__action-group">
                               <button
                                 type="button"
@@ -298,7 +306,7 @@ export default function OverallProgressTab({ projectId, level1List, projectLabel
                                 </button>
                               )}
                             </div>
-                          )}
+                          ))}
                         </td>
                       </tr>
                     );

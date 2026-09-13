@@ -375,7 +375,7 @@ router.get('/reports', requireClientTab('full-report'), requireProjectAccess, as
   try {
     const { project_id } = req.query;
     const result = await query(
-      `SELECT id, report_no, week_start, week_end, created_at
+      `SELECT id, report_no, week_start, week_end, created_at, schedule_pdf_url, schedule_pdf_pages
        FROM project_mgt.reports
        WHERE project_id = $1 AND approval_status = 'approved'
        ORDER BY week_start DESC`,

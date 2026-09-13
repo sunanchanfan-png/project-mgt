@@ -7,7 +7,7 @@ import client from '../../api/client';
 import SCurveChart from './SCurveChart';
 import { SCURVE_PRINT_CSS, openPrintWindow, fmtDMY } from './printUtils';
 
-export default function SCurveTab({ projectId, projectLabel, contractStart }) {
+export default function SCurveTab({ projectId, projectLabel, contractStart, asOf }) {
   const [points, setPoints] = useState(null);
   const [today, setToday] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -16,11 +16,15 @@ export default function SCurveTab({ projectId, projectLabel, contractStart }) {
   useEffect(() => {
     if (!projectId) return;
     setLoading(true);
-    client.get('/progress/scurve', { params: { project_id: projectId } })
+    const params = { project_id: projectId };
+    // asOf: ใช้ตอนเลือก "สัปดาห์ที่" ย้อนหลังไว้ที่ ProjectManagement.jsx — freeze กราฟทั้งเส้นไว้ ณ วัน
+    // สิ้นสุดของสัปดาห์นั้น แทนที่จะลากยาวไปถึงวันนี้จริงเสมอ (ไม่ส่งมา = พฤติกรรมเดิมทุกประการ)
+    if (asOf) params.as_of = asOf;
+    client.get('/progress/scurve', { params })
       .then((res) => { setPoints(res.data.points); setToday(res.data.today); setError(''); })
       .catch(() => setError('ดึงข้อมูลไม่สำเร็จ'))
       .finally(() => setLoading(false));
-  }, [projectId]);
+  }, [projectId, asOf]);
 
   const title = `${projectLabel || ''} — S-Curve ภาพรวมทั้งโครงการ`;
   const printTitle = 'S-Curve ภาพรวมทั้งโครงการ';

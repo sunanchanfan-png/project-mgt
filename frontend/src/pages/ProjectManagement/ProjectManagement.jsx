@@ -51,9 +51,24 @@ export default function ProjectManagement() {
   // ที่ตกลงกันไว้ว่า default ต้องเป็นสัปดาห์ปัจจุบัน)
   const canPickWeek = user?.role === 'admin' || user?.role === 'system_mgr';
   const [selectedWeekNumber, setSelectedWeekNumber] = useState(null);
-  // สัปดาห์ปัจจุบันจริง (เรียนรู้จาก response ของ WeeklyProgressTab ตอนโหลดแบบ live ครั้งแรก) — ใช้กำหนด
-  // ขอบเขตบนของช่องเลือก (เลือกย้อนหลังได้ถึงสัปดาห์ปัจจุบันเท่านั้น ไม่ให้เลือกอนาคต)
+  // สัปดาห์ปัจจุบันจริง + วันสิ้นสุดของ "สัปดาห์ที่กำลังดูอยู่ตอนนี้" (ไม่ว่าจะ live หรือเลือกไว้เอง) — ดึง
+  // แยกต่างหากจาก Tab1 โดยตรง (ไม่พึ่งว่า Tab "งานสัปดาห์นี้" ต้องถูก mount อยู่ก่อน) เพื่อให้ Tab3/4/5
+  // (ตารางงานรวม/S-Curve) รู้ขอบเขตวันที่ที่ต้อง freeze ข้อมูลไว้ได้เสมอ ไม่ว่าผู้ใช้จะเปิด Tab ไหนอยู่ก็ตาม
   const [currentWeekNumber, setCurrentWeekNumber] = useState(null);
+  const [selectedWeekEnd, setSelectedWeekEnd] = useState(null);
+
+  useEffect(() => {
+    if (!projectId || !canPickWeek) { setCurrentWeekNumber(null); setSelectedWeekEnd(null); return; }
+    const params = { project_id: projectId, week: 'this' };
+    if (selectedWeekNumber !== null) params.week_number = selectedWeekNumber;
+    // ยืมใช้ /progress/weekly เพื่อดึงแค่ week_number/week_end (ไม่ได้ใช้ groups ที่ตอบมาด้วยเลย) — เลือกใช้
+    // endpoint นี้เพราะมีสูตรคำนวณเลขสัปดาห์แบบ contract-anchored ที่ถูกต้องอยู่แล้ว ไม่ต้องเขียนซ้ำฝั่ง
+    // frontend หรือเพิ่ม endpoint ใหม่แค่สำหรับข้อมูล 2 ค่านี้
+    client.get('/progress/weekly', { params }).then((res) => {
+      if (selectedWeekNumber === null) setCurrentWeekNumber(res.data.week_number);
+      setSelectedWeekEnd(res.data.week_end);
+    }).catch(() => {});
+  }, [projectId, canPickWeek, selectedWeekNumber]);
 
   // ตั้งค่า Tab เริ่มต้นเป็น Tab แรกที่มีสิทธิ์เข้าถึงได้เสมอ (รายชื่อ Tab ที่มีสิทธิ์อาจยังไม่พร้อมตอน mount
   // แรกสุดถ้า permissions ยังโหลดไม่เสร็จ จึงต้องคอยอัปเดตทุกครั้งที่ TABS เปลี่ยน ไม่ใช่แค่ตอน mount ครั้งเดียว)
@@ -158,7 +173,6 @@ export default function ProjectManagement() {
               week="this"
               editable
               weekNumberOverride={selectedWeekNumber}
-              onWeekResolved={setCurrentWeekNumber}
             />
           )
       )}
@@ -173,6 +187,8 @@ export default function ProjectManagement() {
           level1List={level1List}
           projectLabel={projectLabelText}
           contractStart={projectLabel?.contract_start}
+          asOf={selectedWeekEnd}
+          readOnly={selectedWeekNumber !== null}
         />
       )}
       {projectId && activeTab === 'scurve-main' && (
@@ -180,6 +196,7 @@ export default function ProjectManagement() {
           projectId={projectId}
           projectLabel={projectLabelText}
           contractStart={projectLabel?.contract_start}
+          asOf={selectedWeekEnd}
         />
       )}
       {projectId && activeTab === 'scurve-group' && (
@@ -187,6 +204,7 @@ export default function ProjectManagement() {
           projectId={projectId}
           level1List={level1List}
           contractStart={projectLabel?.contract_start}
+          asOf={selectedWeekEnd}
         />
       )}
     </Layout>

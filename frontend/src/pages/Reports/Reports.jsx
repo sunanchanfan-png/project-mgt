@@ -219,7 +219,6 @@ export default function Reports() {
             report={currentReport}
             printBarHidden={showCollapseToggle && headerCollapsed}
             onReportUpdated={fetchReports}
-            onProjectUpdated={fetchProjects}
           />
         )}
       </div>

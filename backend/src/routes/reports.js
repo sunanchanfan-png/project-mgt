@@ -13,7 +13,7 @@ const { verifyToken, requirePermission, hasPermission, requireRole } = require('
 const { uploadBuffer, isConfigured } = require('../lib/cloudinary');
 const {
   fmtISO, toUTCDate, MS_PER_DAY, getFlatWbsTree, getLatestActualMap, buildProgressTree, computePlanPercent,
-  getProjectWeekNumber, getProjectWeekBoundaries,
+  getProjectWeekNumber, getProjectWeekBoundaries, dateRangesOverlap,
 } = require('../lib/progress');
 
 const router = express.Router();
@@ -64,7 +64,7 @@ async function requireCategoryPermission(req, res, next) {
  */
 async function ensureReportForWeek(projectId, weekStart, weekEnd, weekNumber, userId) {
   const existing = await query(
-    'SELECT id, report_no, week_start, week_end, created_at FROM project_mgt.reports WHERE project_id = $1 AND week_start = $2',
+    'SELECT id, report_no, week_start, week_end, created_at, schedule_pdf_url, schedule_pdf_pages FROM project_mgt.reports WHERE project_id = $1 AND week_start = $2',
     [projectId, weekStart]
   );
   if (existing.rows.length > 0) return existing.rows[0];
@@ -73,14 +73,14 @@ async function ensureReportForWeek(projectId, weekStart, weekEnd, weekNumber, us
     `INSERT INTO project_mgt.reports (project_id, report_no, week_start, week_end, created_by)
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (project_id, week_start) DO NOTHING
-     RETURNING id, report_no, week_start, week_end, created_at`,
+     RETURNING id, report_no, week_start, week_end, created_at, schedule_pdf_url, schedule_pdf_pages`,
     [projectId, weekNumber, weekStart, weekEnd, userId || null]
   );
   if (result.rows.length > 0) return result.rows[0];
 
   // เผื่อกรณี race condition (สองคนเปิดพร้อมกันพอดีจนชน UNIQUE constraint) — ไปดึงแถวที่มีอยู่จริงมาคืนแทน
   const retry = await query(
-    'SELECT id, report_no, week_start, week_end, created_at FROM project_mgt.reports WHERE project_id = $1 AND week_start = $2',
+    'SELECT id, report_no, week_start, week_end, created_at, schedule_pdf_url, schedule_pdf_pages FROM project_mgt.reports WHERE project_id = $1 AND week_start = $2',
     [projectId, weekStart]
   );
   return retry.rows[0];
@@ -162,7 +162,7 @@ router.get('/', requirePermission('reports', 'plan-progress'), async (req, res) 
     const { project_id } = req.query;
     if (!project_id) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
     const result = await query(
-      `SELECT id, report_no, week_start, week_end, created_at, approval_status
+      `SELECT id, report_no, week_start, week_end, created_at, approval_status, schedule_pdf_url, schedule_pdf_pages
        FROM project_mgt.reports WHERE project_id = $1 ORDER BY week_start DESC`,
       [project_id]
     );
@@ -198,8 +198,8 @@ router.put('/:id/approval', requirePermission('reports', 'compiled'), async (req
   }
 });
 
-// ===== แนบไฟล์แผนงาน MS-Project (PDF) — ผูกกับ "โครงการ" ไม่ใช่รายงานฉบับใดฉบับหนึ่ง (ดูเหตุผนใน
-// migration_019_schedule_pdf.sql) ปุ่มอยู่ที่ Tab เล่มรายงานฝั่ง staff แต่ endpoint แก้ที่ตาราง projects =====
+// ===== แนบไฟล์แผนงาน MS-Project (PDF) — ผูกกับ "รายงานแต่ละฉบับ" (แยกตามสัปดาห์ ดูเหตุผลใน
+// migration_021_schedule_pdf_per_report.sql) ปุ่มอยู่ที่ Tab เล่มรายงานฝั่ง staff =====
 const SCHEDULE_PDF_MAX_SIZE = 20 * 1024 * 1024; // 20MB — แผนงาน MS-Project หลายหน้า/ละเอียดสูง ใหญ่กว่ารูปถ่ายทั่วไปได้มาก
 const uploadSchedulePdf = multer({
   storage: multer.memoryStorage(),
@@ -213,11 +213,13 @@ const uploadSchedulePdf = multer({
 });
 
 /**
- * POST /api/reports/schedule-pdf?project_id=X
- * multipart/form-data, field name = "pdf" — อัปโหลดไฟล์ใหม่ทับของเก่าเสมอ (1 โครงการ = 1 ไฟล์)
+ * POST /api/reports/:id/schedule-pdf
+ * multipart/form-data, field name = "pdf" — อัปโหลดไฟล์ใหม่ทับของเก่าเสมอ แต่ทับแค่ "รายงานฉบับนี้ฉบับ
+ * เดียว" เท่านั้น (1 รายงาน/1 สัปดาห์ = 1 ไฟล์) รายงานฉบับอื่นที่เคยแนบไว้แล้วไม่ถูกกระทบ — เพื่อให้แต่ละ
+ * สัปดาห์เก็บเวอร์ชันแผนงาน MS-Project ของตัวเองไว้ได้ ตามที่ตกลงกันไว้ (แผนงานมักอัปเดตทุกสัปดาห์)
  * ใช้สิทธิ์ Tab เดียวกับ "เล่มรายงาน" (reports/compiled) เพราะเป็นปุ่มที่อยู่ในหน้าเดียวกัน
  */
-router.post('/schedule-pdf', requirePermission('reports', 'compiled'), (req, res) => {
+router.post('/:id/schedule-pdf', requirePermission('reports', 'compiled'), (req, res) => {
   if (!isConfigured()) {
     return res.status(503).json({ error: 'ระบบอัปโหลดไฟล์ยังไม่พร้อมใช้งาน (ยังไม่ได้ตั้งค่า Cloudinary บนเซิร์ฟเวอร์)' });
   }
@@ -226,8 +228,6 @@ router.post('/schedule-pdf', requirePermission('reports', 'compiled'), (req, res
       const msg = err.code === 'LIMIT_FILE_SIZE' ? 'ไฟล์ใหญ่เกินไป (จำกัดไม่เกิน 20MB)' : (err.message || 'อัปโหลดไม่สำเร็จ');
       return res.status(400).json({ error: msg });
     }
-    const { project_id: projectId } = req.query;
-    if (!projectId) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
     if (!req.file) return res.status(400).json({ error: 'ไม่พบไฟล์ PDF ที่ส่งมา' });
     try {
       // resource_type: 'image' (ไม่ใช่ 'raw') — แม้จะเป็นไฟล์ PDF ก็ตาม เพราะต้องการให้ Cloudinary แปลง
@@ -236,11 +236,11 @@ router.post('/schedule-pdf', requirePermission('reports', 'compiled'), (req, res
       // ไม่มีตัวอ่าน PDF ในตัว โดยเฉพาะโหมด standalone ที่ติดตั้งเป็นไอคอนแอป
       const result = await uploadBuffer(req.file.buffer, 'sikarin/schedule-pdf', 'image');
       const updateResult = await query(
-        `UPDATE project_mgt.projects SET schedule_pdf_url = $1, schedule_pdf_pages = $2
+        `UPDATE project_mgt.reports SET schedule_pdf_url = $1, schedule_pdf_pages = $2
          WHERE id = $3 RETURNING id, schedule_pdf_url, schedule_pdf_pages`,
-        [result.url, result.pages, projectId]
+        [result.url, result.pages, req.params.id]
       );
-      if (updateResult.rows.length === 0) return res.status(404).json({ error: 'ไม่พบโครงการนี้' });
+      if (updateResult.rows.length === 0) return res.status(404).json({ error: 'ไม่พบรายงานนี้' });
       res.json({ message: 'แนบไฟล์แผนงานเรียบร้อยแล้ว', schedule_pdf_url: result.url, schedule_pdf_pages: result.pages });
     } catch (uploadErr) {
       console.error(uploadErr);
@@ -339,15 +339,23 @@ async function getReportProgressData(reportId, filterZeroActivities = true) {
     actual_percent: actualMap.get(a.id) || 0,
   }));
 
-  // Tab1 "Plan&Progress" โชว์เฉพาะกิจกรรมงานที่ "เริ่มมีความเคลื่อนไหวแล้ว" เท่านั้น ตามที่ตกลงกันไว้:
-  // เอาเฉพาะที่ %แผน > 0% (ถึงกำหนดเริ่มงานแล้วตามแผน) หรือ %actual > 0% (ทำไปแล้วแม้จะเร็วกว่าแผนก็ตาม)
-  // ตัดกิจกรรมงานที่ทั้งแผนและ actual ยังเป็น 0% ทั้งคู่ทิ้งไป (ยังไม่ถึงคิว ไม่มีอะไรน่าสนใจจะโชว์)
-  // กรองจาก flat list ก่อนสร้างเป็นต้นไม้เลย ทำให้ Level1/Level2 ที่ไม่เหลือกิจกรรมงานใดๆ หลังกรองก็จะไม่
-  // ถูกสร้างขึ้นมาในต้นไม้ตั้งแต่แรกไปโดยอัตโนมัติ (buildProgressTree สร้างเฉพาะกิ่งที่มีลูกอยู่ในอินพุตเท่านั้น)
+  // Tab1 "Plan&Progress" โชว์เฉพาะกิจกรรมงานของ "สัปดาห์นี้ตามแผน" (ช่วงวันที่ตามแผนทับซ้อนกับสัปดาห์ของ
+  // รายงานฉบับนี้) บวกกับกิจกรรมงานก่อนหน้าที่ "เลยแผนมาแล้วแต่ยังไม่จบ 100%" (ตกค้าง) เท่านั้น — ตรงกับ
+  // Tab "งานสัปดาห์นี้" ของ Menu3 เป๊ะทุกประการ (ดู /progress/weekly) ไม่ใช่ "กิจกรรมงานใดๆ ที่เคยขยับแล้ว
+  // แม้แต่นิดเดียว" แบบเดิม (แบบเดิมมีปัญหา: กิจกรรมงานที่ทำเสร็จ 100% ไปนานแล้วก็ยังโผล่ค้างอยู่ในทุก
+  // สัปดาห์ถัดไปตลอดไป เพราะ plan_percent คำนวณสะสมจะมากกว่า 0% เสมอหลังพ้นวันเริ่มงานตามแผนไปแล้ว)
   // — ถ้า filterZeroActivities=false (ตารางสรุปผลงานทั้งโครงการ) ใช้ withProgress เต็มๆ ไม่กรองอะไรเลย
-  const withProgressFiltered = filterZeroActivities
-    ? withProgress.filter((a) => a.plan_percent > 0 || a.actual_percent > 0)
-    : withProgress;
+  let withProgressFiltered;
+  if (filterZeroActivities) {
+    const inWeek = withProgress.filter((a) => dateRangesOverlap(a.start_date, a.end_date, report.week_start, report.week_end));
+    const inWeekIds = new Set(inWeek.map((a) => a.id));
+    const overdueExtra = withProgress.filter(
+      (a) => a.end_date && a.end_date < report.week_start && !inWeekIds.has(a.id) && a.actual_percent < 100
+    );
+    withProgressFiltered = [...inWeek, ...overdueExtra];
+  } else {
+    withProgressFiltered = withProgress;
+  }
   const groups = buildProgressTree(withProgressFiltered);
 
   const remarksResult = await query(
@@ -774,12 +782,16 @@ router.get('/:id/photos', requirePermission('reports', 'photos'), async (req, re
   }
 });
 
-const MAX_PHOTOS_PER_ACTIVITY = 4; // ตามที่ตกลง: เลือกได้ไม่เกิน 4 รูปต่อกิจกรรมงาน ต่อรายงาน 1 ฉบับ
+const MAX_PHOTOS_PER_ACTIVITY = 6; // เลือกได้ไม่เกิน 6 รูปต่อกิจกรรมงาน ต่อรายงาน 1 ฉบับ — ให้ตรงกับ
+// MAX_PHOTOS_PER_ITEM (ความปลอดภัย) ด้านบนและ MAX_PHOTOS ฝั่ง frontend (PhotosTab.jsx) ที่เป็น 6 อยู่แล้ว
+// (เดิมตรงนี้เป็น 4 ไม่ตรงกับ frontend ที่โชว์ตัวนับ "x/6" ทำให้ผู้ใช้เลือกได้จริงแค่ 4 รูปทั้งที่ตัวนับ
+// บอกว่าเลือกได้ถึง 6 — backend เป็นตัวบล็อกจริง ต้องแก้ให้ตรงกัน)
 
 /**
  * POST /api/reports/:id/photos/select
  * body: { wbs_level3_id, photo_id }
- * เลือกรูปเข้ารายงานฉบับนี้ (เช็คไม่ให้เกิน 4 รูปต่อกิจกรรมงานทั้งฝั่ง backend ด้วย ไม่พึ่ง frontend อย่างเดียว)
+ * เลือกรูปเข้ารายงานฉบับนี้ (เช็คไม่ให้เกิน MAX_PHOTOS_PER_ACTIVITY รูปต่อกิจกรรมงานทั้งฝั่ง backend ด้วย
+ * ไม่พึ่ง frontend อย่างเดียว)
  */
 router.post('/:id/photos/select', requirePermission('reports', 'photos'), async (req, res) => {
   try {
