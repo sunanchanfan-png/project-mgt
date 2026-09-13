@@ -18,6 +18,34 @@ router.use(verifyToken);
  * พร้อม %W, แผนสะสม (ณ วันสิ้นสุดสัปดาห์), ก่อนหน้า (actual ล่าสุดก่อนสัปดาห์นั้นเริ่ม)
  * ตัดกิ่ง Level1/Level2 ที่ไม่มีกิจกรรมงานอยู่ในสัปดาห์นั้นทิ้ง (โชว์เฉพาะที่เกี่ยวข้อง)
  */
+/**
+ * GET /api/progress/all-activities?project_id=X
+ * รายชื่อกิจกรรมงานทั้งหมดของโครงการ (ไม่จำกัดว่าต้องตกอยู่ในสัปดาห์นี้/หน้า) พร้อม % ปัจจุบัน — ใช้เฉพาะ
+ * ฟีเจอร์ "กรอกข้อมูลย้อนหลัง" เท่านั้น (ค้นหากิจกรรมงานที่ไม่โผล่ในตาราง "งานสัปดาห์นี้" ปกติ เช่น
+ * กิจกรรมที่ทำเสร็จ 100% ไปแล้วนานแล้ว หรือยังไม่ถึงกำหนดเริ่มตามแผน แต่อยากย้อนไปแก้/เติมข้อมูลบางวัน)
+ * จำกัดเฉพาะ admin/system_mgr เหมือนสิทธิ์ backdate ใน POST /entries
+ */
+router.get('/all-activities', requireRole('admin', 'system_mgr'), async (req, res) => {
+  try {
+    const { project_id } = req.query;
+    if (!project_id) return res.status(400).json({ error: 'กรุณาระบุ project_id' });
+    const flat = await getFlatWbsTree(project_id);
+    const today = fmtISO(new Date());
+    const actualMap = await getLatestActualMap(flat.map((a) => a.id), today);
+    const activities = flat.map((a) => ({
+      ...a,
+      plan_percent: computePlanPercent(a.start_date, a.end_date, today),
+      previous_percent: actualMap.get(a.id) || 0,
+      actual_percent: actualMap.get(a.id) || 0,
+      photos: [],
+    }));
+    res.json({ activities });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'ดึงรายชื่อกิจกรรมงานไม่สำเร็จ' });
+  }
+});
+
 router.get('/weekly', async (req, res) => {
   try {
     const { project_id, week, as_of: asOfParam } = req.query;

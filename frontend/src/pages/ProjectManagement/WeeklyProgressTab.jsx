@@ -16,6 +16,7 @@
 // (แจ้งเตือนให้ทราบแทนที่จะบันทึกไม่สำเร็จทั้งหมด)
 import { useEffect, useState } from 'react';
 import client from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
 import { buildPrintTableHTML } from './printUtils';
 
 // CSS ของตารางพิมพ์ แบบสมบูรณ์ในตัวเอง (เทคนิคเดียวกับ Tab ตารางงานรวม/Gantt — เปิดหน้าต่างใหม่แยก
@@ -52,6 +53,14 @@ function fmtDMY(dateStr) {
 
 const MAX_PHOTOS = 6; // แนบรูปได้สูงสุด 6 รูปต่อการบันทึกความคืบหน้า 1 ครั้ง (ต่อกิจกรรมงาน 1 แถว)
 
+// วันนี้ในรูปแบบ YYYY-MM-DD ตามเวลาเครื่องผู้ใช้ — ใช้แค่กำหนด "ค่าสูงสุด" ของ input วันที่ย้อนหลัง (ห้าม
+// เลือกวันในอนาคต) เท่านั้น การตัดสินใจจริงว่า "วันนี้" คือวันไหนยังอิงนาฬิกาเซิร์ฟเวอร์เสมอ (ดู
+// routes/progress.js) เผื่อนาฬิกาเครื่องผู้ใช้เพี้ยนไปจากเซิร์ฟเวอร์เล็กน้อย backend จะเป็นคนกันเองอีกชั้น
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // helper กันพัง เผื่อเรียกตอน editingAct เป็น null ระหว่าง state transition สั้นๆ
 function savedIncrementSafe(act) {
   if (!act) return 0;
@@ -59,6 +68,12 @@ function savedIncrementSafe(act) {
 }
 
 export default function WeeklyProgressTab({ projectId, week, editable }) {
+  const { user } = useAuth();
+  // "กรอกข้อมูลย้อนหลัง" (เลือกวันที่อื่นนอกจากวันนี้ตอนบันทึก) เปิดให้เฉพาะ admin/system_mgr เท่านั้น —
+  // ตรงกับที่ backend (routes/progress.js POST /entries) อนุญาตให้ระบุ entry_date เองเฉพาะ 2 role นี้
+  // เหมือนกัน (pm/foreman ยังคงบันทึกด้วยวันนี้จริงเสมอ ไม่เห็นช่องนี้เลย)
+  const canBackdate = user?.role === 'admin' || user?.role === 'system_mgr';
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -75,11 +90,33 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
   const [modalPercent, setModalPercent] = useState('');
   const [modalRemark, setModalRemark] = useState('');
   const [modalPhotos, setModalPhotos] = useState([]);
+  const [modalEntryDate, setModalEntryDate] = useState(todayStr());
   const [modalSaving, setModalSaving] = useState(false);
 
   // เปิด popup ดูรูปที่แนบไว้แล้ว (เฉพาะ Tab ที่ editable=false เช่น "งานสัปดาห์หน้า" ที่ไม่มี popup
   // แก้ไขให้กด — Tab ที่ editable=true ดูรูปได้จาก popup แก้ไขโดยตรงอยู่แล้ว ไม่ต้องมีอันนี้ซ้ำ)
   const [viewingPhotosAct, setViewingPhotosAct] = useState(null);
+
+  // ค้นหากิจกรรมงาน "ทั้งโครงการ" (ไม่จำกัดแค่ตกอยู่ในสัปดาห์นี้) — ใช้เฉพาะฟีเจอร์กรอกข้อมูลย้อนหลัง เผื่อ
+  // อยากแก้/เติมข้อมูลของกิจกรรมงานที่ไม่โผล่ในตารางปกติ (เช่น ทำเสร็จ 100% ไปนานแล้ว หรือยังไม่ถึงกำหนด
+  // เริ่มตามแผน) โหลดครั้งเดียวตอนเปิด Tab (เฉพาะ admin/system_mgr เท่านั้น) แล้วกรองด้วย JS ตอนพิมพ์ค้นหา
+  const [allActivities, setAllActivities] = useState([]);
+  const [searchText, setSearchText] = useState('');
+
+  useEffect(() => {
+    if (!projectId || !canBackdate) { setAllActivities([]); return; }
+    client.get('/progress/all-activities', { params: { project_id: projectId } })
+      .then((res) => setAllActivities(res.data.activities))
+      .catch(() => setAllActivities([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, canBackdate]);
+
+  const searchResults = searchText.trim().length >= 2
+    ? allActivities.filter((a) => {
+        const q = searchText.trim().toLowerCase();
+        return a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q);
+      }).slice(0, 15)
+    : [];
 
   function fetchData() {
     if (!projectId) return;
@@ -126,10 +163,23 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
     setModalPercent(thisWeekIncrement(act).toString());
     setModalRemark(remarksMap[`level3:${act.id}`] || '');
     setModalPhotos((act.photos || []).map((p) => ({ tempId: `existing-${p.id}`, name: '', url: p.url, uploading: false })));
+    setModalEntryDate(todayStr());
   }
 
   function closeEditModal() {
     setEditingAct(null);
+  }
+
+  function handleEntryDateChange(newDate) {
+    setModalEntryDate(newDate);
+    // remarksMap ที่ prefill ไว้ตอนเปิด popup เป็นของ "รายงานสัปดาห์ปัจจุบัน" เท่านั้น — พอเปลี่ยนไปเลือก
+    // วันอื่นที่ไม่ใช่วันนี้ (backdate) ค่าที่เคย prefill ไว้จะผิดบริบท (เป็นของสัปดาห์ปัจจุบัน ไม่ใช่ของ
+    // สัปดาห์ที่กำลังจะบันทึกย้อนหลัง) เคลียร์ทิ้งให้พิมพ์ใหม่ชัดเจนไปเลย กันสับสน/บันทึกทับผิดสัปดาห์
+    if (newDate === todayStr()) {
+      setModalRemark(remarksMap[`level3:${editingAct.id}`] || '');
+    } else {
+      setModalRemark('');
+    }
   }
 
   // อัปโหลดจริงขึ้น Cloudinary ทันทีที่เลือกไฟล์ (ไม่รอกดบันทึก) — ใส่ placeholder "กำลังอัปโหลด..."
@@ -200,29 +250,45 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
     // ฐานคือ previous_percent (ก่อนสัปดาห์ที่กำลังดูอยู่เริ่ม) เสมอ — เพราะ "ปัจจุบัน" คือค่าที่แก้ไขให้เป็น
     // ยอด "ทั้งหมดของสัปดาห์นี้" ใหม่ (ไม่ใช่ค่าที่บวกเพิ่มไปเรื่อยๆ) กด "แก้ไข" แล้วเปลี่ยนตัวเลขคือ "แก้ยอดใหม่"
     const newTotal = Math.min(100, editingAct.previous_percent + inc);
+    const isBackdating = modalEntryDate !== todayStr();
     setModalSaving(true);
     try {
-      // สำคัญ: ไม่ส่ง entry_date จาก client เองแล้ว (เดิมใช้นาฬิกาเครื่อง/browser ซึ่งอาจไม่ตรงกับเซิร์ฟเวอร์
-      // เป๊ะ ทำให้ query "ณ วันนี้" ที่ backend หา entry ไม่เจอในบางกรณี) — ให้ backend คำนวณ "วันนี้"
-      // จากนาฬิกาเซิร์ฟเวอร์เองเสมอ (แหล่งเดียว รับประกันว่าตรงกับที่ backend ใช้ query เทียบทุกที่)
+      // ส่ง entry_date ไปด้วยเสมอ — backend จะใช้ค่านี้จริงเฉพาะตอนที่ผู้ใช้เป็น admin/system_mgr เท่านั้น
+      // (ฟีเจอร์กรอกข้อมูลย้อนหลัง) ส่วน pm/foreman ส่งไปก็ไม่มีผล backend จะใช้วันนี้จริงเสมอ (กันไม่ให้
+      // ใครก็ได้ปลอมวันที่ผ่าน network request เอง)
       // photo_urls = URL จริงจาก Cloudinary ที่อัปโหลดเสร็จแล้วเท่านั้น (กรอง uploading ทิ้ง กันเผื่อหลุดมา)
       await client.post('/progress/entries', {
         wbs_level3_id: editingAct.id,
         actual_percent: newTotal,
         photo_urls: modalPhotos.filter((p) => p.url).map((p) => p.url),
+        entry_date: modalEntryDate,
       });
 
-      // บันทึก "รายละเอียดงาน" เข้ารายงานสัปดาห์ปัจจุบันด้วย (ช่องเดียวกับ remark ของ Menu จัดทำรายงาน) —
-      // ทำเป็นขั้นตอนแยกต่างหาก ถ้าพลาด (เช่น ไม่มีสิทธิ์ Tab จัดทำรายงาน) ไม่ทำให้การบันทึก %/รูปที่เพิ่ง
-      // สำเร็จไปแล้วเสียหายไปด้วย แค่แจ้งเตือนแยกให้รู้ว่าส่วนนี้ไม่ได้บันทึก
-      if (currentReportId) {
+      // หา report_id ที่ถูกต้องสำหรับบันทึก "รายละเอียดงาน" — ถ้ากำลังกรอกย้อนหลัง (เลือกวันไม่ใช่วันนี้)
+      // ต้องผูกกับรายงานของ "สัปดาห์ที่มีวันที่นั้นอยู่" ไม่ใช่รายงานสัปดาห์ปัจจุบัน (currentReportId)
+      let targetReportId = currentReportId;
+      if (isBackdating) {
         try {
-          await client.put(`/reports/${currentReportId}/remarks`, {
+          const forDateRes = await client.get('/reports/for-date', { params: { project_id: projectId, date: modalEntryDate } });
+          targetReportId = forDateRes.data.report.id;
+        } catch (forDateErr) {
+          targetReportId = null;
+        }
+      }
+
+      // บันทึก "รายละเอียดงาน" เข้ารายงานของสัปดาห์ที่เกี่ยวข้องด้วย (ช่องเดียวกับ remark ของ Menu จัดทำ
+      // รายงาน) — ทำเป็นขั้นตอนแยกต่างหาก ถ้าพลาด (เช่น ไม่มีสิทธิ์ Tab จัดทำรายงาน) ไม่ทำให้การบันทึก %/รูป
+      // ที่เพิ่งสำเร็จไปแล้วเสียหายไปด้วย แค่แจ้งเตือนแยกให้รู้ว่าส่วนนี้ไม่ได้บันทึก
+      if (targetReportId) {
+        try {
+          await client.put(`/reports/${targetReportId}/remarks`, {
             wbs_level: 'level3',
             wbs_id: editingAct.id,
             remark: modalRemark,
           });
-          setRemarksMap((prev) => ({ ...prev, [`level3:${editingAct.id}`]: modalRemark }));
+          if (!isBackdating) {
+            setRemarksMap((prev) => ({ ...prev, [`level3:${editingAct.id}`]: modalRemark }));
+          }
         } catch (remarkErr) {
           alert('บันทึก %/รูปสำเร็จ แต่บันทึก "รายละเอียดงาน" ไม่สำเร็จ (อาจไม่มีสิทธิ์ Tab จัดทำรายงาน) — % และรูปถูกบันทึกเรียบร้อยแล้ว');
         }
@@ -269,11 +335,10 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
     printWindow.addEventListener('afterprint', () => printWindow.close());
   }
 
-  if (loading && !data) return <p>กำลังโหลดข้อมูล...</p>;
+  if (!data) return <p>กำลังโหลดข้อมูล...</p>;
   if (error) return <p className="pdata-status pdata-status--warn">{error}</p>;
-  if (!data || data.groups.length === 0) {
-    return <p className="pdata-status pdata-status--warn">ไม่มีกิจกรรมงานที่ตกอยู่ในช่วงสัปดาห์นี้</p>;
-  }
+
+  const hasActivities = data.groups.length > 0;
 
   return (
     <div className="progress-table-wrap">
@@ -283,6 +348,49 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
         </p>
         <button className="btn-primary btn-primary--sm" onClick={handlePrint}>🖨 Print</button>
       </div>
+
+      {/* ค้นหากิจกรรมงานย้อนหลัง — เฉพาะ admin/system_mgr เท่านั้น ใช้กรณีกิจกรรมงานที่อยากกรอกข้อมูลย้อนหลัง
+          ไม่ได้โผล่อยู่ในตาราง "งานสัปดาห์นี้" ปกติ (เช่น ทำเสร็จ 100% ไปนานแล้ว หรือยังไม่ถึงกำหนดเริ่ม) */}
+      {canBackdate && (
+        <div style={{ position: 'relative', marginBottom: 12 }}>
+          <input
+            type="text"
+            className="progress-table__input"
+            style={{ width: '100%', boxSizing: 'border-box' }}
+            placeholder="🔍 ค้นหากิจกรรมงานเพื่อกรอกข้อมูลย้อนหลัง (พิมพ์รหัส/ชื่อ อย่างน้อย 2 ตัวอักษร)"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          {searchResults.length > 0 && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, marginTop: 4,
+              background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8,
+              maxHeight: 280, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            }}
+            >
+              {searchResults.map((act) => (
+                <button
+                  key={act.id}
+                  type="button"
+                  onClick={() => { openEditModal(act); setSearchText(''); }}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
+                    border: 'none', borderBottom: '1px solid var(--line)', background: 'none',
+                    fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  <strong>{act.code}</strong> {act.name}
+                  <span style={{ color: 'var(--ink-soft)', fontSize: 12 }}> — {act.level1.code}/{act.level2.code} • ทำแล้ว {fmtPct(act.actual_percent)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!hasActivities ? (
+        <p className="pdata-status pdata-status--warn">ไม่มีกิจกรรมงานที่ตกอยู่ในช่วงสัปดาห์นี้</p>
+      ) : (
       <div className="progress-table-scroll">
         <table className="progress-table">
         {/* ความกว้างคอลัมน์เป็น % ตามที่กำหนด — ตัดคอลัมน์ "การจัดการ" ออกแล้ว เหลือ 8 คอลัมน์เสมอไม่ว่า
@@ -380,6 +488,7 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
         </tbody>
       </table>
       </div>
+      )}
 
       {/* popup กรอก %/รูป/รายละเอียดงาน — เปิดจากการกดที่แถว (เฉพาะ Tab ที่ editable=true) */}
       {editingAct && (
@@ -392,6 +501,29 @@ export default function WeeklyProgressTab({ projectId, week, editable }) {
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--ink-soft)' }}>
               แผน(สะสม) {fmtPct(editingAct.plan_percent)} • ก่อนหน้า {fmtPct(editingAct.previous_percent)}
             </p>
+
+            {canBackdate && (
+              <>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                  วันที่บันทึกข้อมูล
+                </label>
+                <input
+                  type="date"
+                  className="progress-table__input"
+                  style={{ width: '100%', marginBottom: 4, boxSizing: 'border-box' }}
+                  value={modalEntryDate}
+                  max={todayStr()}
+                  onChange={(e) => handleEntryDateChange(e.target.value)}
+                />
+                {modalEntryDate !== todayStr() && (
+                  <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--danger, #c0392b)' }}>
+                    ⚠️ กำลังบันทึกย้อนหลังเป็นวันที่ {fmtDMY(modalEntryDate)} — เฉพาะ admin/system_mgr เท่านั้นที่ทำได้
+                    (ตัวเลข "ก่อนหน้า" ด้านบนอิงสัปดาห์ปัจจุบันเป็นค่าประมาณ กรุณาตรวจสอบยอดรวมให้ถูกต้องก่อนบันทึก)
+                  </p>
+                )}
+                {modalEntryDate === todayStr() && <div style={{ marginBottom: 16 }} />}
+              </>
+            )}
 
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
               % ที่ทำได้สัปดาห์นี้
