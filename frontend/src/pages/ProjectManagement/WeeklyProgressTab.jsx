@@ -95,31 +95,6 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
   // แก้ไขให้กด — Tab ที่ editable=true ดูรูปได้จาก popup แก้ไขโดยตรงอยู่แล้ว ไม่ต้องมีอันนี้ซ้ำ)
   const [viewingPhotosAct, setViewingPhotosAct] = useState(null);
 
-  // ค้นหากิจกรรมงาน "ทั้งโครงการ" (ไม่จำกัดแค่ตกอยู่ในสัปดาห์นี้) — ใช้เฉพาะฟีเจอร์กรอกข้อมูลย้อนหลัง เผื่อ
-  // อยากแก้/เติมข้อมูลของกิจกรรมงานที่ไม่โผล่ในตารางปกติ (เช่น ทำเสร็จ 100% ไปนานแล้ว หรือยังไม่ถึงกำหนด
-  // เริ่มตามแผน) โหลดครั้งเดียวตอนเปิด Tab (เฉพาะ admin/system_mgr เท่านั้น) แล้วกรองด้วย JS ตอนพิมพ์ค้นหา
-  const [allActivities, setAllActivities] = useState([]);
-  const [searchText, setSearchText] = useState('');
-
-  function fetchAllActivities() {
-    if (!projectId || !canBackdate) { setAllActivities([]); return; }
-    client.get('/progress/all-activities', { params: { project_id: projectId } })
-      .then((res) => setAllActivities(res.data.activities))
-      .catch(() => setAllActivities([]));
-  }
-
-  useEffect(() => {
-    fetchAllActivities();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, canBackdate]);
-
-  const searchResults = searchText.trim().length >= 2
-    ? allActivities.filter((a) => {
-        const q = searchText.trim().toLowerCase();
-        return a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q);
-      }).slice(0, 15)
-    : [];
-
   function fetchData() {
     if (!projectId) return;
     setLoading(true);
@@ -128,6 +103,10 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
     // รายงานย้อนหลัง) — ไม่ส่งมา (undefined/null ตามปกติ) ระบบยังคำนวณจาก "วันนี้จริง" เหมือนเดิมทุกประการ
     if (weekNumberOverride !== null && weekNumberOverride !== undefined) {
       params.week_number = weekNumberOverride;
+      // ตอนเลือกดูสัปดาห์ใดสัปดาห์หนึ่งตรงๆ (ไม่ใช่ Tab live ปกติ) ต้องเห็น "ทุกกิจกรรมงาน" ของสัปดาห์นั้น
+      // รวมงานที่ทำเสร็จ 100% ไปแล้วด้วย เพื่อให้ตรวจสอบ/แก้ไขย้อนหลังได้ครบ — ต่างจาก Tab live ปกติที่ซ่อน
+      // งานเสร็จแล้วออกเพื่อไม่ให้รกตา (ดูคอมเมนต์ที่ backend เรื่อง include_completed ประกอบ)
+      params.include_completed = true;
     }
     client.get('/progress/weekly', { params })
       .then((res) => {
@@ -248,7 +227,6 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
       await client.delete('/progress/entries/latest', { params: { wbs_level3_id: act.id } });
       closeEditModal();
       fetchData();
-      fetchAllActivities();
     } catch (err) {
       alert(err.response?.data?.error || 'ลบไม่สำเร็จ');
     } finally {
@@ -317,7 +295,6 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
 
       closeEditModal();
       fetchData();
-      fetchAllActivities();
     } catch (err) {
       alert(err.response?.data?.error || 'บันทึกไม่สำเร็จ');
     } finally {
@@ -368,45 +345,6 @@ export default function WeeklyProgressTab({ projectId, week, editable, weekNumbe
         </p>
         <button className="btn-primary btn-primary--sm" onClick={handlePrint}>🖨 Print</button>
       </div>
-
-      {/* ค้นหากิจกรรมงานย้อนหลัง — เฉพาะ admin/system_mgr เท่านั้น ใช้กรณีกิจกรรมงานที่อยากกรอกข้อมูลย้อนหลัง
-          ไม่ได้โผล่อยู่ในตาราง "งานสัปดาห์นี้" ปกติ (เช่น ทำเสร็จ 100% ไปนานแล้ว หรือยังไม่ถึงกำหนดเริ่ม) */}
-      {canBackdate && (
-        <div style={{ position: 'relative', marginBottom: 12 }}>
-          <input
-            type="text"
-            className="progress-table__input"
-            style={{ width: '100%', boxSizing: 'border-box' }}
-            placeholder="🔍 ค้นหากิจกรรมงานเพื่อกรอกข้อมูลย้อนหลัง (พิมพ์รหัส/ชื่อ อย่างน้อย 2 ตัวอักษร)"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-          {searchResults.length > 0 && (
-            <div style={{
-              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, marginTop: 4,
-              background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 8,
-              maxHeight: 280, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            }}
-            >
-              {searchResults.map((act) => (
-                <button
-                  key={act.id}
-                  type="button"
-                  onClick={() => { openEditModal(act); setSearchText(''); }}
-                  style={{
-                    display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
-                    border: 'none', borderBottom: '1px solid var(--line)', background: 'none',
-                    fontSize: 13, cursor: 'pointer',
-                  }}
-                >
-                  <strong>{act.code}</strong> {act.name}
-                  <span style={{ color: 'var(--ink-soft)', fontSize: 12 }}> — {act.level1.code}/{act.level2.code} • ทำแล้ว {fmtPct(act.actual_percent)}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {!hasActivities ? (
         <p className="pdata-status pdata-status--warn">ไม่มีกิจกรรมงานที่ตกอยู่ในช่วงสัปดาห์นี้</p>
