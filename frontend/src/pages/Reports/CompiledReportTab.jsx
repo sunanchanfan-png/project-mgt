@@ -103,7 +103,7 @@ export default function CompiledReportTab({ reportId, reportLabel, project, repo
   useEffect(() => {
     if (!project?.id || !report?.week_end) return;
     setWeeklyLoading(true);
-    client.get('/progress/weekly', { params: { project_id: project.id, week: 'this', as_of: report.week_end } })
+    client.get('/progress/weekly', { params: { project_id: project.id, week: 'this', as_of: report.week_end, include_completed: true } })
       .then((res) => {
         setWeeklyData(res.data);
       })

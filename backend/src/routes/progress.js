@@ -96,7 +96,31 @@ router.get('/weekly', async (req, res) => {
         overdueExtra = candidates.filter((a) => (candidateActualMap.get(a.id) || 0) < 100);
       }
     }
-    const allActivities = [...inWeek, ...overdueExtra];
+
+    // เพิ่มกิจกรรมงานที่ "มีการบันทึกความคืบหน้าจริงเกิดขึ้นในสัปดาห์นี้" เข้ามาด้วย แม้ช่วงวันที่ตามแผนของ
+    // กิจกรรมงานนั้นจะไม่ครอบคลุมสัปดาห์นี้เลยก็ตาม — สำคัญมากสำหรับฟีเจอร์ "กรอกข้อมูลย้อนหลัง": ถ้า admin
+    // ย้อนไปกรอกข้อมูลให้สัปดาห์เก่าที่ผ่านมาแล้ว แต่ช่วงวันตามแผนของกิจกรรมงานนั้นไม่ตรงกับสัปดาห์ที่กรอก
+    // ย้อนหลังไป (เช่น กิจกรรมงานเสร็จเร็ว/ช้ากว่าแผนที่ตั้งไว้ตอนแรก) ระบบเดิมจะไม่เอามาแสดงใน "กิจกรรมงานที่
+    // ทำในรอบสัปดาห์นี้" ของเล่มรายงานเลย ทั้งที่บันทึกไว้แล้วจริงๆ (ตรวจสอบจาก entry_date ตรงๆ ไม่ใช่ช่วงวัน
+    // ตามแผน) เฉพาะ week==='this' เท่านั้น (ไม่ใช้กับ Tab สัปดาห์หน้าซึ่งเป็นแค่การวางแผนล่วงหน้า ยังไม่มี
+    // การบันทึกจริงเกิดขึ้นได้อยู่แล้ว)
+    let actualEntryExtra = [];
+    if (week !== 'next') {
+      const excludeIds = new Set([...inWeek, ...overdueExtra].map((a) => a.id));
+      const entryResult = await query(
+        `SELECT DISTINCT pe.wbs_level3_id
+         FROM project_mgt.progress_entries pe
+         JOIN project_mgt.wbs_level3 l3 ON l3.id = pe.wbs_level3_id
+         JOIN project_mgt.wbs_level2 l2 ON l2.id = l3.level2_id
+         JOIN project_mgt.wbs_level1 l1 ON l1.id = l2.level1_id
+         WHERE l1.project_id = $1 AND pe.entry_date BETWEEN $2 AND $3`,
+        [project_id, start, end]
+      );
+      const entryIds = new Set(entryResult.rows.map((r) => r.wbs_level3_id));
+      actualEntryExtra = flat.filter((a) => entryIds.has(a.id) && !excludeIds.has(a.id));
+    }
+
+    const allActivities = [...inWeek, ...overdueExtra, ...actualEntryExtra];
 
     // ถ้าเป็น Tab "งานสัปดาห์หน้า" ต้องรู้ด้วยว่ากิจกรรมงานไหน "ก็โผล่ในสัปดาห์นี้อยู่แล้วด้วย" (ช่วงวันที่
     // ทับซ้อนกับสัปดาห์นี้เช่นกัน) — รายการที่ซ้ำแบบนี้ให้แก้ไขได้แค่จาก Tab สัปดาห์นี้เท่านั้น (ทำเร็วกว่าแผน
@@ -142,8 +166,10 @@ router.get('/weekly', async (req, res) => {
           is_delayed: plan >= 100 && current < 100,
         };
       })
-      // งานที่เสร็จ 100% แล้ว ไม่ต้องโชว์ใน Tab รายสัปดาห์อีก (ไปโชว์รวมทีเดียวใน Tab ตารางงานรวมแทน)
-      .filter((a) => a.actual_percent < 100);
+      // งานที่เสร็จ 100% แล้ว ไม่ต้องโชว์ใน Tab รายสัปดาห์อีก (ไปโชว์รวมทีเดียวใน Tab ตารางงานรวมแทน) — ยกเว้น
+      // ตอนเรียกจาก Tab9 "เล่มรายงาน" (ส่ง include_completed=true มา) ซึ่งอยากเห็นงานที่เพิ่งเสร็จในสัปดาห์
+      // นั้นโชว์อยู่ในรายงานด้วย (เป็นบันทึกผลงานที่ทำสำเร็จ ไม่ใช่ todo list ที่ต้องซ่อนงานเสร็จแล้ว)
+      .filter((a) => req.query.include_completed === 'true' || a.actual_percent < 100);
 
     const groups = pruneEmptyBranches(buildProgressTree(withProgress));
 

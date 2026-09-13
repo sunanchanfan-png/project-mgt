@@ -163,6 +163,38 @@ router.get(
       const flat = await getFlatWbsTree(project_id);
       const inWeek = flat.filter((a) => dateRangesOverlap(a.start_date, a.end_date, start, end));
 
+      // เพิ่มกิจกรรมงานที่ "เลยแผนมาแล้วแต่ยังไม่จบ 100%" เข้ามาด้วย (เฉพาะ week==='this') — เหตุผลเดียวกับ
+      // routes/progress.js ทุกประการ (ดูคอมเมนต์เต็มที่นั่น)
+      let overdueExtra = [];
+      if (week !== 'next') {
+        const inWeekIds = new Set(inWeek.map((a) => a.id));
+        const candidates = flat.filter((a) => a.end_date && a.end_date < start && !inWeekIds.has(a.id));
+        if (candidates.length > 0) {
+          const candidateActualMap = await getLatestActualMap(candidates.map((a) => a.id), end);
+          overdueExtra = candidates.filter((a) => (candidateActualMap.get(a.id) || 0) < 100);
+        }
+      }
+
+      // เพิ่มกิจกรรมงานที่ "มีการบันทึกความคืบหน้าจริงเกิดขึ้นในสัปดาห์นี้" เข้ามาด้วย (สำหรับฟีเจอร์กรอก
+      // ข้อมูลย้อนหลัง) — เหตุผลเดียวกับ routes/progress.js ทุกประการ (ดูคอมเมนต์เต็มที่นั่น)
+      let actualEntryExtra = [];
+      if (week !== 'next') {
+        const excludeIds = new Set([...inWeek, ...overdueExtra].map((a) => a.id));
+        const entryResult = await query(
+          `SELECT DISTINCT pe.wbs_level3_id
+           FROM project_mgt.progress_entries pe
+           JOIN project_mgt.wbs_level3 l3 ON l3.id = pe.wbs_level3_id
+           JOIN project_mgt.wbs_level2 l2 ON l2.id = l3.level2_id
+           JOIN project_mgt.wbs_level1 l1 ON l1.id = l2.level1_id
+           WHERE l1.project_id = $1 AND pe.entry_date BETWEEN $2 AND $3`,
+          [project_id, start, end]
+        );
+        const entryIds = new Set(entryResult.rows.map((r) => r.wbs_level3_id));
+        actualEntryExtra = flat.filter((a) => entryIds.has(a.id) && !excludeIds.has(a.id));
+      }
+
+      const allActivities = [...inWeek, ...overdueExtra, ...actualEntryExtra];
+
       let alsoInThisWeekIds = new Set();
       if (week === 'next') {
         alsoInThisWeekIds = new Set(
@@ -170,27 +202,31 @@ router.get(
         );
       }
 
-      const level3Ids = inWeek.map((a) => a.id);
+      const level3Ids = allActivities.map((a) => a.id);
       const dayBeforeWeek = fmtISO(new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000));
       const previousMap = await getLatestActualMap(level3Ids, dayBeforeWeek);
       const currentMap = await getLatestActualMap(level3Ids, end);
       const photosMap = await getLatestPhotosMap(level3Ids, end);
 
-      const withProgress = inWeek
+      const withProgress = allActivities
         .map((a) => {
           const isOverlap = alsoInThisWeekIds.has(a.id);
           const previous = previousMap.get(a.id) || 0;
           const current = currentMap.has(a.id) ? currentMap.get(a.id) : previous;
+          const plan = computePlanPercent(a.start_date, a.end_date, end);
           return {
             ...a,
-            plan_percent: computePlanPercent(a.start_date, a.end_date, end),
+            plan_percent: plan,
             previous_percent: previous,
             actual_percent: current,
             also_in_this_week: isOverlap,
             photos: photosMap.get(a.id) || [],
+            is_delayed: plan >= 100 && current < 100,
           };
         })
-        .filter((a) => a.actual_percent < 100);
+        // งานที่เสร็จ 100% แล้ว ไม่ต้องโชว์ใน Tab รายสัปดาห์อีก — ยกเว้นตอนเรียกจาก Tab เล่มรายงาน
+        // (ส่ง include_completed=true มา) ซึ่งอยากเห็นงานที่เพิ่งเสร็จในสัปดาห์นั้นโชว์อยู่ในรายงานด้วย
+        .filter((a) => req.query.include_completed === 'true' || a.actual_percent < 100);
 
       const groups = pruneEmptyBranches(buildProgressTree(withProgress));
 

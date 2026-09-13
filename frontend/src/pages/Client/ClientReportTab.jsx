@@ -96,7 +96,7 @@ export default function ClientReportTab({ projectId, project, reportId, report }
   useEffect(() => {
     if (!projectId || !report?.week_end) return;
     setWeeklyLoading(true);
-    client.get('/client/weekly', { params: { project_id: projectId, week: 'this', as_of: report.week_end } })
+    client.get('/client/weekly', { params: { project_id: projectId, week: 'this', as_of: report.week_end, include_completed: true } })
       .then((res) => setWeeklyData(res.data))
       .catch((err) => console.error('ดึงงานสัปดาห์นี้ไม่สำเร็จ:', err))
       .finally(() => setWeeklyLoading(false));
