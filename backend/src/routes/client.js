@@ -238,9 +238,11 @@ router.get(
             is_delayed: plan >= 100 && current < 100,
           };
         })
-        // งานที่เสร็จ 100% แล้ว ไม่ต้องโชว์ใน Tab รายสัปดาห์อีก — ยกเว้นตอนเรียกจาก Tab เล่มรายงาน
-        // (ส่ง include_completed=true มา) ซึ่งอยากเห็นงานที่เพิ่งเสร็จในสัปดาห์นั้นโชว์อยู่ในรายงานด้วย
-        .filter((a) => req.query.include_completed === 'true' || a.actual_percent < 100);
+        // งานที่เสร็จ 100% แล้ว ไม่ต้องโชว์ใน Tab รายสัปดาห์อีก — ยกเว้น 2 กรณี: (1) ตอนเรียกจาก Tab เล่ม
+        // รายงาน (ส่ง include_completed=true มา) (2) สัปดาห์ที่กำลังดูอยู่ "ยังไม่จบจริง" (วันนี้ยังไม่ถึง
+        // วันสิ้นสุดสัปดาห์) — เหตุผลเดียวกับ routes/progress.js ทุกประการ (ดูคอมเมนต์เต็มที่นั่น) ระหว่าง
+        // สัปดาห์ยังไม่จบ อาจมีการแก้ % ลดลงจาก 100% กลับไปได้อีก ถ้าตัดออกทันทีจะไม่มีทางแก้ไขงานนั้นได้อีก
+        .filter((a) => req.query.include_completed === 'true' || a.actual_percent < 100 || end >= fmtISO(new Date()));
 
       const groups = pruneEmptyBranches(buildProgressTree(withProgress));
 
