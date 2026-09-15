@@ -190,36 +190,57 @@ export default function Reports() {
       </div>
 
       {/* ===== Content ===== */}
+      {/*
+        Mount ทุก Tab พร้อมกันตั้งแต่เลือกรายงาน (preload) แล้วสลับ Tab ด้วยการซ่อน/โชว์ผ่าน CSS เท่านั้น
+        (เหมือนที่ทำกับ ClientApp/ForemanApp/ProjectManagement.jsx/ProjectData.jsx) — สลับ Tab ไปมาไม่ต้อง
+        โหลดข้อมูลใหม่ทุกครั้งอีกต่อไป แต่ละ Tab ยังคงรีเฟรชข้อมูลของตัวเองหลังบันทึก/แก้ไขตามปกติ — โหลด
+        ใหม่ทั้งหมดเฉพาะตอนเปลี่ยนรายงานฉบับที่ดูอยู่ (key ผูกกับ reportId เหมือนเดิมทุกจุด) 4 Tab หมวดหมู่
+        (ความปลอดภัย/ปัญหาอุปสรรค/งานเพิ่มลด/เรื่องที่ค้าง) เดิมใช้ component ร่วมกันตัวเดียวสลับ category
+        (remount ทุกครั้งที่สลับ) — ต้องแยกเป็นคนละ instance กันคนละ Tab ถึงจะ preload พร้อมกันได้จริง
+      */}
       <div className="reports-content">
-        {reportId && CATEGORY_TABS.includes(activeTab) && (
-          <ReportItemsTab
-            key={`${reportId}-${activeTab}`}
-            reportId={reportId}
-            category={ALL_TABS.find((t) => t.key === activeTab).category}
-            tabLabel={ALL_TABS.find((t) => t.key === activeTab).label}
-            allowPhotos={activeTab === 'safety'}
-          />
-        )}
+        {reportId && CATEGORY_TABS.map((catKey) => {
+          const tabDef = ALL_TABS.find((t) => t.key === catKey);
+          return (
+            <div key={catKey} style={{ display: activeTab === catKey ? 'block' : 'none' }}>
+              <ReportItemsTab
+                key={reportId}
+                reportId={reportId}
+                category={tabDef.category}
+                tabLabel={tabDef.label}
+                allowPhotos={catKey === 'safety'}
+              />
+            </div>
+          );
+        })}
 
-        {reportId && activeTab === 'plan-progress' && (
-          <PlanProgressTab key={reportId} reportId={reportId} />
+        {reportId && (
+          <div style={{ display: activeTab === 'plan-progress' ? 'block' : 'none' }}>
+            <PlanProgressTab key={reportId} reportId={reportId} />
+          </div>
         )}
-        {reportId && activeTab === 'photos' && (
-          <PhotosTab key={reportId} reportId={reportId} />
+        {reportId && (
+          <div style={{ display: activeTab === 'photos' ? 'block' : 'none' }}>
+            <PhotosTab key={reportId} reportId={reportId} />
+          </div>
         )}
-        {reportId && activeTab === 'next-week-plan' && (
-          <NextWeekTab key={reportId} reportId={reportId} level1List={level1List} />
+        {reportId && (
+          <div style={{ display: activeTab === 'next-week-plan' ? 'block' : 'none' }}>
+            <NextWeekTab key={reportId} reportId={reportId} level1List={level1List} />
+          </div>
         )}
-        {reportId && activeTab === 'compiled' && (
-          <CompiledReportTab
-            key={reportId}
-            reportId={reportId}
-            reportLabel={currentReport ? `${projects.find((p) => String(p.id) === String(projectId))?.project_code}_report${currentReport.report_no}` : 'report'}
-            project={projects.find((p) => String(p.id) === String(projectId))}
-            report={currentReport}
-            printBarHidden={showCollapseToggle && headerCollapsed}
-            onReportUpdated={fetchReports}
-          />
+        {reportId && (
+          <div style={{ display: activeTab === 'compiled' ? 'block' : 'none' }}>
+            <CompiledReportTab
+              key={reportId}
+              reportId={reportId}
+              reportLabel={currentReport ? `${projects.find((p) => String(p.id) === String(projectId))?.project_code}_report${currentReport.report_no}` : 'report'}
+              project={projects.find((p) => String(p.id) === String(projectId))}
+              report={currentReport}
+              printBarHidden={showCollapseToggle && headerCollapsed}
+              onReportUpdated={fetchReports}
+            />
+          </div>
         )}
       </div>
     </Layout>

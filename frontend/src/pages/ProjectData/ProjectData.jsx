@@ -520,10 +520,7 @@ export default function ProjectData() {
             <button
               key={t.key}
               className={`pdata-tab ${activeTab === t.key ? 'pdata-tab--active' : ''}`}
-              onClick={() => {
-                if (!confirmLeaveGanttIfDirty()) return;
-                setActiveTab(t.key);
-              }}
+              onClick={() => setActiveTab(t.key)}
             >
               {t.label}
             </button>
@@ -532,8 +529,7 @@ export default function ProjectData() {
       )}
 
       {/* ===== Tab 3: กิจกรรมงาน ===== */}
-      {activeTab === 'activity' && (
-        <>
+      <div style={{ display: activeTab === 'activity' ? 'block' : 'none' }}>
           <div className="pdata-toolbar" style={{ marginTop: 0 }}>
             <div className="pdata-toolbar__filters-group">
               <div className="pdata-toolbar__filter">
@@ -667,12 +663,10 @@ export default function ProjectData() {
               )}
             </>
           )}
-        </>
-      )}
+        </div>
 
       {/* ===== Tab 1: กลุ่มงานหลัก ===== */}
-      {activeTab === 'group' && (
-        <>
+      <div style={{ display: activeTab === 'group' ? 'block' : 'none' }}>
           <div className="pdata-actions">
             <button className="btn-primary btn-primary--sm" onClick={openCreateModal} disabled={!projectId}>
               + เพิ่ม
@@ -745,12 +739,10 @@ export default function ProjectData() {
               </table>
             </div>
           )}
-        </>
-      )}
+      </div>
 
       {/* ===== Tab 2: รายการงาน ===== */}
-      {activeTab === 'item' && (
-        <>
+      <div style={{ display: activeTab === 'item' ? 'block' : 'none' }}>
           <div className="pdata-toolbar" style={{ marginTop: 0 }}>
             <div className="pdata-toolbar__filter">
               <span>กลุ่มงาน</span>
@@ -823,13 +815,12 @@ export default function ProjectData() {
               ))}
             </>
           )}
-        </>
-      )}
+      </div>
 
       {/* ===== Tab 4: Gantt (ภาพรวม) — ดูอย่างเดียวโดยดีฟอลต์ ต้องกด "แก้ไขข้อมูล" ก่อนถึงจะแก้วันที่ได้ ===== */}
-      {activeTab === 'gantt' && (
+      <div style={{ display: activeTab === 'gantt' ? 'block' : 'none' }}>
         <GanttView projectId={projectId} onDirtyChange={setGanttDirty} />
-      )}
+      </div>
 
       {modalOpen && (
         <WbsLevel1Modal

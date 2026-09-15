@@ -776,6 +776,37 @@ router.get('/:id/photos', requirePermission('reports', 'photos'), async (req, re
       });
     });
 
+    // เลือกรูปที่ "ยังไม่ถูกเลือก" เข้าเล่มรายงานให้อัตโนมัติทันที (สูงสุด MAX_PHOTOS_PER_ACTIVITY รูปต่อ
+    // กิจกรรมงาน) ไม่ต้องรอให้ staff มากดเลือกเองที Tab "รูปถ่าย" ก่อน — พอถ่ายรูปแนบเข้ามาที่ Menu3 ปุ๊บ
+    // จะโผล่ในเล่มรายงานทันทีที่เปิดดู ยังคงไปยกเลิก/ลบ/สลับลำดับที่ Tab "รูปถ่าย" ได้ตามปกติทีหลัง — การ
+    // auto-select นี้เกิดแค่ "ครั้งแรกที่เห็น" เท่านั้น (พอเลือกแล้ว selection_id จะไม่เป็น null อีกต่อไป
+    // ครั้งถัดไปที่เปิดดูจะไม่ auto-select ซ้ำ ถ้า staff ไปกดยกเลิกเองทีหลัง ก็จะไม่ถูกเลือกกลับมาอัตโนมัติ
+    // อีก เพราะยังนับเป็น "เคยผ่านการตัดสินใจแล้ว" ไม่ใช่ "ยังไม่เคยเห็น")
+    for (const group of groupsMap.values()) {
+      const alreadySelected = group.photos.filter((p) => p.selection_id);
+      let room = MAX_PHOTOS_PER_ACTIVITY - alreadySelected.length;
+      if (room <= 0) continue;
+      let nextSortOrder = alreadySelected.reduce((max, p) => Math.max(max, p.sort_order || 0), 0) + 1;
+      for (const photo of group.photos) {
+        if (room <= 0) break;
+        if (photo.selection_id) continue;
+        // eslint-disable-next-line no-await-in-loop
+        const insertResult = await query(
+          `INSERT INTO project_mgt.report_photo_selections (report_id, wbs_level3_id, progress_photo_id, sort_order)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (report_id, progress_photo_id) DO NOTHING
+           RETURNING id`,
+          [req.params.id, group.wbs_level3_id, photo.photo_id, nextSortOrder]
+        );
+        if (insertResult.rows.length > 0) {
+          photo.selection_id = insertResult.rows[0].id;
+          photo.sort_order = nextSortOrder;
+          nextSortOrder += 1;
+          room -= 1;
+        }
+      }
+    }
+
     res.json({ groups: [...groupsMap.values()] });
   } catch (err) {
     console.error(err);

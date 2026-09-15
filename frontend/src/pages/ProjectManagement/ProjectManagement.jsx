@@ -164,48 +164,68 @@ export default function ProjectManagement() {
         </div>
       )}
 
-      {projectId && activeTab === 'this-week' && (
-        showMobileFlow
-          ? <MobileForemanTab projectId={projectId} week="this" />
-          : (
-            <WeeklyProgressTab
-              projectId={projectId}
-              week="this"
-              editable
-              weekNumberOverride={selectedWeekNumber}
-            />
-          )
+      {/*
+        Mount ทุก Tab พร้อมกันตั้งแต่เลือกโครงการ (preload) แล้วสลับ Tab ด้วยการซ่อน/โชว์ผ่าน CSS เท่านั้น
+        (เหมือนที่ทำกับ ClientApp/ForemanApp) — สลับ Tab ไปมาไม่ต้องโหลดข้อมูลใหม่ทุกครั้งอีกต่อไป แต่ละ
+        Tab ยังคงรีเฟรชข้อมูลของตัวเองหลังบันทึก/แก้ไขตามปกติ (ผ่าน fetchData() ภายในของแต่ละ Tab เอง) —
+        โหลดใหม่ทั้งหมดเฉพาะตอนเปลี่ยนโครงการ หรือกดเปลี่ยน "สัปดาห์ที่" (Tab นี้/หน้าใหม่เท่านั้น)
+      */}
+      {projectId && (
+        <div style={{ display: activeTab === 'this-week' ? 'block' : 'none' }}>
+          {showMobileFlow
+            ? <MobileForemanTab projectId={projectId} week="this" />
+            : (
+              <WeeklyProgressTab
+                key={`this-${selectedWeekNumber}`}
+                projectId={projectId}
+                week="this"
+                editable
+                weekNumberOverride={selectedWeekNumber}
+              />
+            )}
+        </div>
       )}
-      {projectId && activeTab === 'next-week' && (
-        showMobileFlow
-          ? <MobileForemanTab projectId={projectId} week="next" />
-          : <WeeklyProgressTab projectId={projectId} week="next" editable weekNumberOverride={selectedWeekNumber} />
+      {projectId && (
+        <div style={{ display: activeTab === 'next-week' ? 'block' : 'none' }}>
+          {showMobileFlow
+            ? <MobileForemanTab projectId={projectId} week="next" />
+            : <WeeklyProgressTab key={`next-${selectedWeekNumber}`} projectId={projectId} week="next" editable weekNumberOverride={selectedWeekNumber} />}
+        </div>
       )}
-      {projectId && activeTab === 'overall' && (
-        <OverallProgressTab
-          projectId={projectId}
-          level1List={level1List}
-          projectLabel={projectLabelText}
-          contractStart={projectLabel?.contract_start}
-          asOf={selectedWeekEnd}
-          readOnly={selectedWeekNumber !== null}
-        />
+      {projectId && (
+        <div style={{ display: activeTab === 'overall' ? 'block' : 'none' }}>
+          <OverallProgressTab
+            key={selectedWeekEnd || 'live'}
+            projectId={projectId}
+            level1List={level1List}
+            projectLabel={projectLabelText}
+            contractStart={projectLabel?.contract_start}
+            asOf={selectedWeekEnd}
+            readOnly={selectedWeekNumber !== null}
+          />
+        </div>
       )}
-      {projectId && activeTab === 'scurve-main' && (
-        <SCurveTab
-          projectId={projectId}
-          projectLabel={projectLabelText}
-          contractStart={projectLabel?.contract_start}
-          asOf={selectedWeekEnd}
-        />
+      {projectId && (
+        <div style={{ display: activeTab === 'scurve-main' ? 'block' : 'none' }}>
+          <SCurveTab
+            key={selectedWeekEnd || 'live'}
+            projectId={projectId}
+            projectLabel={projectLabelText}
+            contractStart={projectLabel?.contract_start}
+            asOf={selectedWeekEnd}
+          />
+        </div>
       )}
-      {projectId && activeTab === 'scurve-group' && (
-        <GroupSCurveGrid
-          projectId={projectId}
-          level1List={level1List}
-          contractStart={projectLabel?.contract_start}
-          asOf={selectedWeekEnd}
-        />
+      {projectId && (
+        <div style={{ display: activeTab === 'scurve-group' ? 'block' : 'none' }}>
+          <GroupSCurveGrid
+            key={selectedWeekEnd || 'live'}
+            projectId={projectId}
+            level1List={level1List}
+            contractStart={projectLabel?.contract_start}
+            asOf={selectedWeekEnd}
+          />
+        </div>
       )}
     </Layout>
   );
