@@ -163,7 +163,7 @@ router.get('/weekly', async (req, res) => {
     const currentMap = await getLatestActualMap(level3Ids, end);
     // รูปถ่ายของ "รายการล่าสุด" ต่อกิจกรรม — ให้ดูได้เลยแม้ไม่ได้กดแก้ไข (ใช้ end ของสัปดาห์นี้เป็น
     // asOfDate เดียวกับ currentMap เพื่อให้ดึงรูปของ entry เดียวกับที่ใช้กำหนด actual_percent ปัจจุบัน)
-    const photosMap = await getLatestPhotosMap(level3Ids, end);
+    const photosMap = await getLatestPhotosMap(level3Ids, end, start); // start = ขอบเขตล่างของสัปดาห์ที่กำลังดูอยู่ (กันไม่ให้ดึงรูปของสัปดาห์ก่อนหน้ามาปน)
 
     const withProgress = allActivities
       .map((a) => {
@@ -492,6 +492,21 @@ router.post('/entries', requireRole('admin', 'pm', 'foreman'), async (req, res) 
     if (Array.isArray(photo_urls)) {
       for (const url of photo_urls.slice(0, MAX_PHOTOS)) {
         if (!url) continue;
+        // กันไม่ให้เพิ่มรูป "ซ้ำ" (URL เดียวกัน) เข้ากิจกรรมงานเดียวกันจากคนละวัน (คนละ entry) ซ้ำหลายรอบ —
+        // เกิดได้เพราะ popup กรอกข้อมูล (WeeklyProgressTab.jsx/MobileForemanTab.jsx) โหลดรูปที่มีอยู่แล้ว
+        // ในสัปดาห์นี้มา prefill ให้เห็นในกล่องแนบรูป ถ้าผู้ใช้กดบันทึกวันใหม่โดยไม่ได้ลบรูปเก่าออกก่อน (แค่
+        // อยากเพิ่มรูปใหม่เข้าไปเพิ่ม) รูปเดิมจะถูกส่งกลับมาพร้อมรูปใหม่ด้วย ถ้าไม่กันไว้จะสร้างแถวใหม่ซ้ำกับ
+        // รูปเดิมที่มีอยู่แล้ว (คนละ entry_id แต่ url เดียวกัน) ทำให้ "คลังรูปรวม" ของกิจกรรมงานนั้นในเล่ม
+        // รายงานบวมขึ้นเรื่อยๆ ด้วยรูปซ้ำ — ไม่กระทบรูปของ entry นี้เอง (ถูกลบไปแล้วตอน same-day resave
+        // ด้านบน) เช็คแค่ว่ามี "entry อื่น" ของกิจกรรมงานนี้ถืออยู่แล้วหรือไม่เท่านั้น
+        // eslint-disable-next-line no-await-in-loop
+        const dupResult = await query(
+          `SELECT 1 FROM project_mgt.progress_photos pp
+           JOIN project_mgt.progress_entries pe2 ON pe2.id = pp.progress_entry_id
+           WHERE pe2.wbs_level3_id = $1 AND pp.photo_url = $2 LIMIT 1`,
+          [wbs_level3_id, url]
+        );
+        if (dupResult.rows.length > 0) continue; // มีอยู่แล้วจาก entry อื่น ข้ามไป ไม่เพิ่มซ้ำ
         // eslint-disable-next-line no-await-in-loop
         const photoResult = await query(
           `INSERT INTO project_mgt.progress_photos (progress_entry_id, photo_url) VALUES ($1, $2) RETURNING *`,

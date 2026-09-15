@@ -220,7 +220,7 @@ router.get(
       const dayBeforeWeek = fmtISO(new Date(new Date(start).getTime() - 24 * 60 * 60 * 1000));
       const previousMap = await getLatestActualMap(level3Ids, dayBeforeWeek);
       const currentMap = await getLatestActualMap(level3Ids, end);
-      const photosMap = await getLatestPhotosMap(level3Ids, end);
+      const photosMap = await getLatestPhotosMap(level3Ids, end, start); // start = ขอบเขตล่างของสัปดาห์ที่กำลังดูอยู่ (กันไม่ให้ดึงรูปของสัปดาห์ก่อนหน้ามาปน)
 
       const withProgress = allActivities
         .map((a) => {

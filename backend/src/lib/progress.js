@@ -231,7 +231,16 @@ async function getLatestActualMap(level3Ids, asOfDate) {
  * งาน — ใช้โชว์ thumbnail ให้ดูได้เลยแม้ไม่ได้กดแก้ไข (Menu3 Tab งานสัปดาห์นี้/หน้า) คืนเป็น
  * Map<wbs_level3_id, {id, url}[]>
  */
-async function getLatestPhotosMap(level3Ids, asOfDate) {
+/**
+ * @param {number[]} level3Ids
+ * @param {string} asOfDate - วันสิ้นสุดที่จะนับ (รวมวันนี้ด้วย)
+ * @param {string} [sinceDate] - ถ้าระบุ จะดึงเฉพาะรูปของ entry ที่ entry_date อยู่ในช่วง [sinceDate, asOfDate]
+ *   เท่านั้น (ใช้ตอนเรียกจาก /weekly ส่ง week_start ของสัปดาห์ที่กำลังดูมาเป็นขอบเขตล่าง) — ไม่ระบุ (ไม่ส่ง
+ *   มา) จะหา "รูปล่าสุดตลอดกาล" แบบเดิม (ไม่จำกัดว่าต้องอยู่ในสัปดาห์ไหน) ซึ่งทำให้เกิดบั๊กจริง: พอขึ้น
+ *   สัปดาห์ใหม่แล้วยังไม่เคยกรอกอะไรเลย ระบบไปเอา "รูปล่าสุดตลอดกาล" (ของสัปดาห์ที่แล้ว) มาโชว์เป็นรูปที่
+ *   "มีอยู่แล้ว" ในสัปดาห์ใหม่ผิดๆ ทั้งที่ยังไม่เคยแนบอะไรในสัปดาห์นี้เลย
+ */
+async function getLatestPhotosMap(level3Ids, asOfDate, sinceDate = null) {
   const map = new Map();
   if (level3Ids.length === 0) return map;
   const today = fmtISO(new Date());
@@ -242,11 +251,11 @@ async function getLatestPhotosMap(level3Ids, asOfDate) {
      JOIN (
        SELECT DISTINCT ON (wbs_level3_id) id, wbs_level3_id
        FROM project_mgt.progress_entries
-       WHERE wbs_level3_id = ANY($1::int[]) AND entry_date <= $2
+       WHERE wbs_level3_id = ANY($1::int[]) AND entry_date <= $2 ${sinceDate ? 'AND entry_date >= $3' : ''}
        ORDER BY wbs_level3_id, entry_date DESC, created_at DESC
      ) e ON e.id = pp.progress_entry_id
      ORDER BY e.wbs_level3_id, pp.id`,
-    [level3Ids, effectiveAsOf]
+    sinceDate ? [level3Ids, effectiveAsOf, sinceDate] : [level3Ids, effectiveAsOf]
   );
   result.rows.forEach((r) => {
     if (!map.has(r.wbs_level3_id)) map.set(r.wbs_level3_id, []);
