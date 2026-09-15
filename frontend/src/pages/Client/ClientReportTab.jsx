@@ -6,7 +6,7 @@
 // report (object) ที่เลือกแล้วมาใช้แสดงผลอย่างเดียว — โครงสร้าง/ลำดับหัวข้อของหน้าพรีวิวยังตรงกับของจริงเป๊ะ
 // เหมือนเดิม ถ้าแก้รูปแบบเล่มรายงานฝั่ง staff (CompiledReportTab.jsx / routes/reports.js GET /:id/export)
 // ในอนาคต ต้องกลับมาแก้ไฟล์นี้ให้ตรงกันด้วย (จงใจ copy มา ไม่ได้ import ใช้ร่วมกัน เพราะ endpoint คนละชุด)
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import client from '../../api/client';
 import SCurveChart from '../ProjectManagement/SCurveChart';
 import { buildPdfPageImageUrl } from '../../utils/cloudinaryPdf';
@@ -80,40 +80,59 @@ export default function ClientReportTab({ projectId, project, reportId, report }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // ป้องกัน race condition ตอนสลับโครงการ/รายงานเร็วๆ: ถ้าคำขอของโครงการ/รายงาน "เก่า" ตอบกลับมาช้ากว่า
+  // คำขอของโครงการ/รายงาน "ใหม่" (เช่น โครงการเก่ามีข้อมูลเยอะกว่าเลยตอบช้ากว่า) ข้อมูลเก่าจะมาทับข้อมูลที่
+  // ถูกต้องอยู่แล้วแบบเงียบๆ — เจอบั๊กนี้จริงในแอป foreman (สลับโครงการแล้วรูปของโครงการก่อนหน้ายังค้างอยู่)
+  // ใช้ ref เก็บ "หมายเลขคำขอล่าสุด" แยกกันเป็นชุดตาม reportId (คำขอหลัก 4 เส้น) และ project+week_end
+  // (S-Curve/งานสัปดาห์นี้/ตารางรวม) ก่อนเริ่ม fetch ทุกครั้ง แล้วเช็คตอนได้ผลลัพธ์กลับมาว่ายังตรงกับค่าที่
+  // ร้องขอล่าสุดจริงไหม ก่อนจะ setState ทับ (ถ้าไม่ตรง = มีคำขอใหม่กว่าแซงไปแล้ว ทิ้งผลลัพธ์นี้ไปเงียบๆ)
+  const mainRequestKeyRef = useRef(null);
+  const scurveRequestKeyRef = useRef(null);
+  const weeklyRequestKeyRef = useRef(null);
+  const overallRequestKeyRef = useRef(null);
+
   // ดึงข้อมูล S-Curve จาก Menu 3 Tab 4 — ส่ง as_of=report.week_end เสมอ เพื่อ freeze กราฟไว้ ณ วันจบสัปดาห์
   // ของรายงานฉบับที่กำลังดูอยู่ (ไม่งั้นรายงานเก่าจะขยับตามวันที่ปัจจุบันไปเรื่อยๆ ทุกครั้งที่เปิดดูซ้ำ)
   useEffect(() => {
     if (!projectId || !report?.week_end) return;
+    const requestKey = `${projectId}:${report.week_end}`;
+    scurveRequestKeyRef.current = requestKey;
     setScurveLoading(true);
     client.get('/client/scurve', { params: { project_id: projectId, as_of: report.week_end } })
-      .then((res) => setScurveData(res.data))
+      .then((res) => { if (scurveRequestKeyRef.current === requestKey) setScurveData(res.data); })
       .catch((err) => console.error('ดึง S-Curve ไม่สำเร็จ:', err))
-      .finally(() => setScurveLoading(false));
+      .finally(() => { if (scurveRequestKeyRef.current === requestKey) setScurveLoading(false); });
   }, [projectId, report?.week_end]);
 
   // ดึงข้อมูลงานสัปดาห์นี้ สำหรับตาราง "กิจกรรมงานที่ทำในรอบสัปดาห์นี้" — as_of=report.week_end ทำให้
   // "สัปดาห์นี้" หมายถึง "สัปดาห์ของรายงานฉบับนี้" เสมอ ไม่ใช่สัปดาห์ปัจจุบันจริง
   useEffect(() => {
     if (!projectId || !report?.week_end) return;
+    const requestKey = `${projectId}:${report.week_end}`;
+    weeklyRequestKeyRef.current = requestKey;
     setWeeklyLoading(true);
     client.get('/client/weekly', { params: { project_id: projectId, week: 'this', as_of: report.week_end, include_completed: true } })
-      .then((res) => setWeeklyData(res.data))
+      .then((res) => { if (weeklyRequestKeyRef.current === requestKey) setWeeklyData(res.data); })
       .catch((err) => console.error('ดึงงานสัปดาห์นี้ไม่สำเร็จ:', err))
-      .finally(() => setWeeklyLoading(false));
+      .finally(() => { if (weeklyRequestKeyRef.current === requestKey) setWeeklyLoading(false); });
   }, [projectId, report?.week_end]);
 
   // ดึงข้อมูลตารางงานรวม สำหรับ "ตารางสรุปปริมาณงานและผลงานรวมทั้งโครงการ" — as_of=report.week_end
   useEffect(() => {
     if (!projectId || !report?.week_end) return;
+    const requestKey = `${projectId}:${report.week_end}`;
+    overallRequestKeyRef.current = requestKey;
     setOverallLoading(true);
     client.get('/client/overall', { params: { project_id: projectId, as_of: report.week_end } })
-      .then((res) => setOverallData(res.data))
+      .then((res) => { if (overallRequestKeyRef.current === requestKey) setOverallData(res.data); })
       .catch((err) => console.error('ดึงตารางงานรวมไม่สำเร็จ:', err))
-      .finally(() => setOverallLoading(false));
+      .finally(() => { if (overallRequestKeyRef.current === requestKey) setOverallLoading(false); });
   }, [projectId, report?.week_end]);
 
   useEffect(() => {
     if (!reportId) return;
+    const requestKey = reportId;
+    mainRequestKeyRef.current = requestKey;
     setLoading(true);
     Promise.all([
       client.get(`/client/reports/${reportId}/progress`),
@@ -122,6 +141,7 @@ export default function ClientReportTab({ projectId, project, reportId, report }
       client.get(`/client/reports/${reportId}/photos`),
     ])
       .then(([progressRes, ...rest]) => {
+        if (mainRequestKeyRef.current !== requestKey) return; // มีคำขอใหม่กว่าแซงไปแล้ว ทิ้งผลลัพธ์นี้
         setProgress(progressRes.data);
         const categoryResults = rest.slice(0, CATEGORY_KEYS.length);
         const nextWeekRes = rest[CATEGORY_KEYS.length];
@@ -149,8 +169,8 @@ export default function ClientReportTab({ projectId, project, reportId, report }
 
         setError('');
       })
-      .catch((err) => setError(err.response?.data?.error || 'ดึงข้อมูลไม่สำเร็จ'))
-      .finally(() => setLoading(false));
+      .catch((err) => { if (mainRequestKeyRef.current === requestKey) setError(err.response?.data?.error || 'ดึงข้อมูลไม่สำเร็จ'); })
+      .finally(() => { if (mainRequestKeyRef.current === requestKey) setLoading(false); });
   }, [reportId]);
 
   function renderWeeklyActivities() {
