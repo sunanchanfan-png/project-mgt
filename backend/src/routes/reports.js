@@ -340,19 +340,48 @@ async function getReportProgressData(reportId, filterZeroActivities = true) {
   }));
 
   // Tab1 "Plan&Progress" โชว์เฉพาะกิจกรรมงานของ "สัปดาห์นี้ตามแผน" (ช่วงวันที่ตามแผนทับซ้อนกับสัปดาห์ของ
-  // รายงานฉบับนี้) บวกกับกิจกรรมงานก่อนหน้าที่ "เลยแผนมาแล้วแต่ยังไม่จบ 100%" (ตกค้าง) เท่านั้น — ตรงกับ
-  // Tab "งานสัปดาห์นี้" ของ Menu3 เป๊ะทุกประการ (ดู /progress/weekly) ไม่ใช่ "กิจกรรมงานใดๆ ที่เคยขยับแล้ว
-  // แม้แต่นิดเดียว" แบบเดิม (แบบเดิมมีปัญหา: กิจกรรมงานที่ทำเสร็จ 100% ไปนานแล้วก็ยังโผล่ค้างอยู่ในทุก
-  // สัปดาห์ถัดไปตลอดไป เพราะ plan_percent คำนวณสะสมจะมากกว่า 0% เสมอหลังพ้นวันเริ่มงานตามแผนไปแล้ว)
-  // — ถ้า filterZeroActivities=false (ตารางสรุปผลงานทั้งโครงการ) ใช้ withProgress เต็มๆ ไม่กรองอะไรเลย
+  // รายงานฉบับนี้) บวกกับกิจกรรมงานก่อนหน้าที่ "เลยแผนมาแล้วแต่ยังไม่จบ 100%" (ตกค้าง) บวกกับกิจกรรมงานที่
+  // "มีความคืบหน้าเพิ่มขึ้นจริงในสัปดาห์นี้" (เช่น กรอกย้อนหลัง หรือช่วงวันตามแผนไม่ตรงกับสัปดาห์นี้พอดี) —
+  // ตรงกับ Tab "งานสัปดาห์นี้" ของ Menu3 เป๊ะทุกประการ (ดู /progress/weekly) รวมถึงเงื่อนไข "สัปดาห์ยังไม่จบ
+  // ไม่ต้องซ่อนงานที่เพิ่งครบ 100%" ด้วย (ระหว่างสัปดาห์ยังไม่จบ อาจมีการแก้ % ลดลงจาก 100% กลับไปได้อีก) —
+  // ถ้า filterZeroActivities=false (ตารางสรุปผลงานทั้งโครงการ) ใช้ withProgress เต็มๆ ไม่กรองอะไรเลย
   let withProgressFiltered;
   if (filterZeroActivities) {
+    const weekNotYetEnded = report.week_end >= fmtISO(new Date());
     const inWeek = withProgress.filter((a) => dateRangesOverlap(a.start_date, a.end_date, report.week_start, report.week_end));
     const inWeekIds = new Set(inWeek.map((a) => a.id));
     const overdueExtra = withProgress.filter(
-      (a) => a.end_date && a.end_date < report.week_start && !inWeekIds.has(a.id) && a.actual_percent < 100
+      (a) => a.end_date && a.end_date < report.week_start && !inWeekIds.has(a.id) && (weekNotYetEnded || a.actual_percent < 100)
     );
-    withProgressFiltered = [...inWeek, ...overdueExtra];
+
+    // กิจกรรมงานที่ "มีความคืบหน้าเพิ่มขึ้นจริงในสัปดาห์นี้" (entry_date อยู่ในช่วงสัปดาห์นี้ + % เพิ่มขึ้น
+    // จริง ไม่ใช่แค่มี entry ผ่านมาเฉยๆ) — เหตุผลเดียวกับ /progress/weekly ทุกประการ (ดูคอมเมนต์เต็มที่นั่น)
+    const excludeIds = new Set([...inWeek, ...overdueExtra].map((a) => a.id));
+    const entryResult = await query(
+      `SELECT DISTINCT pe.wbs_level3_id
+       FROM project_mgt.progress_entries pe
+       JOIN project_mgt.wbs_level3 l3 ON l3.id = pe.wbs_level3_id
+       JOIN project_mgt.wbs_level2 l2 ON l2.id = l3.level2_id
+       JOIN project_mgt.wbs_level1 l1 ON l1.id = l2.level1_id
+       WHERE l1.project_id = $1 AND pe.entry_date BETWEEN $2 AND $3`,
+      [report.project_id, report.week_start, report.week_end]
+    );
+    const entryIds = new Set(entryResult.rows.map((r) => r.wbs_level3_id));
+    const candidates = withProgress.filter((a) => entryIds.has(a.id) && !excludeIds.has(a.id));
+    let actualEntryExtra = [];
+    if (candidates.length > 0) {
+      const candidateIds = candidates.map((a) => a.id);
+      const dayBeforeWeek = fmtISO(new Date(toUTCDate(report.week_start).getTime() - MS_PER_DAY));
+      const candidatePreviousMap = await getLatestActualMap(candidateIds, dayBeforeWeek);
+      const candidateCurrentMap = await getLatestActualMap(candidateIds, report.week_end);
+      actualEntryExtra = candidates.filter((a) => {
+        const prev = candidatePreviousMap.get(a.id) || 0;
+        const curr = candidateCurrentMap.has(a.id) ? candidateCurrentMap.get(a.id) : prev;
+        return curr > prev;
+      });
+    }
+
+    withProgressFiltered = [...inWeek, ...overdueExtra, ...actualEntryExtra];
   } else {
     withProgressFiltered = withProgress;
   }
